@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Panel general</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"><!-- lo llena sidebar.js según el rol --></nav>
+
+  <div class="main" style="margin-left:0;">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+        <div class="search"><input placeholder="Buscar por cliente, Nº de expediente, CI/NIT…"></div>
+      </div>
+      <div class="top-right">
+        <div class="mono" style="font-size:12px;color:var(--muted)" id="today-date"></div>
+        <div style="font-size:18px;position:relative;">🔔<span class="badge-alert" id="alert-count" style="position:absolute;top:-6px;right:-8px;">0</span></div>
+        <div class="avatar" id="avatar">--</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Panel general</h1><p id="fecha-larga"></p></div>
+        <button class="btn gold">+ Nuevo caso</button>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi"><div class="num" id="kpi-casos">—</div><div class="lbl">Casos activos</div></div>
+        <div class="kpi warn"><div class="num" id="kpi-plazos">—</div><div class="lbl">Plazos próximos (7 días)</div></div>
+        <div class="kpi danger"><div class="num" id="kpi-audiencias">—</div><div class="lbl">Audiencias hoy</div></div>
+        <div class="kpi"><div class="num" id="kpi-honorarios">—</div><div class="lbl">Honorarios por cobrar</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Próximos vencimientos</h3>
+        <table>
+          <thead>
+            <tr><th>Expediente</th><th>Materia</th><th>Tipo de plazo</th><th>Vence</th><th>Estado</th></tr>
+          </thead>
+          <tbody id="tabla-plazos">
+            <tr><td colspan="5">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script>
+  document.getElementById('today-date').textContent =
+    new Date().toLocaleDateString('es-BO', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+  document.getElementById('fecha-larga').textContent =
+    'Resumen del estudio — hoy, ' + new Date().toLocaleDateString('es-BO', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  async function cargarKpis() {
+    const res = await fetch('/api/dashboard/kpis');
+    if (!res.ok) return;
+    const k = await res.json();
+    document.getElementById('kpi-casos').textContent = k.casos_activos;
+    document.getElementById('kpi-plazos').textContent = k.plazos_proximos;
+    document.getElementById('kpi-audiencias').textContent = k.audiencias_hoy;
+    document.getElementById('kpi-honorarios').textContent =
+      'Bs ' + Number(k.honorarios_por_cobrar).toLocaleString('es-BO');
+    document.getElementById('alert-count').textContent = k.plazos_proximos + k.audiencias_hoy;
+  }
+
+  async function cargarCasosConPlazos() {
+    const res = await fetch('/api/casos');
+    const tbody = document.getElementById('tabla-plazos');
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="5">No se pudo cargar</td></tr>'; return; }
+    const casos = await res.json();
+    if (casos.length === 0) { tbody.innerHTML = '<tr><td colspan="5">Sin casos registrados</td></tr>'; return; }
+
+    tbody.innerHTML = casos.map(c => `
+      <tr>
+        <td class="row-link" onclick="location.href='/detalle.html?id=${c.id}'">${c.numero_expediente}</td>
+        <td><span class="tag mat">${c.materia}</span></td>
+        <td>${c.juzgado_tribunal || '—'}</td>
+        <td>${c.proximo_plazo ? new Date(c.proximo_plazo).toLocaleDateString('es-BO') : '—'}</td>
+        <td><span class="tag plazo-ok">${c.estado}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  cargarKpis();
+  cargarCasosConPlazos();
+</script>
+</body>
+</html>

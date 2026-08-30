@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Iniciar sesión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="login-shell">
+    <div class="login-card">
+      <h1>Lex<span style="color:var(--gold)">System</span></h1>
+      <p>Ingresá con tu cuenta para ver tus casos.</p>
+
+      <div class="field">
+        <label>Tipo de cuenta</label>
+        <select id="tipoCuenta">
+          <option value="staff">Abogado / equipo del estudio</option>
+          <option value="cliente">Cliente</option>
+        </select>
+      </div>
+
+      <form id="login-form">
+        <div class="error-msg" id="error-msg"></div>
+        <div class="field">
+          <label>Correo electrónico</label>
+          <input type="email" id="email" required autocomplete="username">
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input type="password" id="password" required autocomplete="current-password">
+        </div>
+        <button class="btn gold" type="submit" style="width:100%;" id="submit-btn">Ingresar</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const errorMsg = document.getElementById('error-msg');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Ingresando…';
+
+      const body = {
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value,
+        tipoCuenta: document.getElementById('tipoCuenta').value,
+      };
+
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
+        window.location.href = data.redirect;
+      } catch (err) {
+        errorMsg.textContent = err.message;
+        errorMsg.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Ingresar';
+      }
+    });
+  </script>
+</body>
+</html>

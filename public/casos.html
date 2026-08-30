@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Casos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+        <div class="search"><input placeholder="Buscar por cliente, Nº de expediente, CI/NIT…"></div>
+      </div>
+      <div class="top-right"><div class="avatar" id="avatar">--</div></div>
+    </div>
+
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Casos</h1><p id="contador-casos">Cargando…</p></div>
+        <button class="btn gold">+ Nuevo caso</button>
+      </div>
+
+      <div class="card" style="padding:0;">
+        <table>
+          <thead>
+            <tr><th>Expediente</th><th>Materia</th><th>Juzgado / distrito</th><th>Responsable</th><th>Próximo plazo</th><th>Estado</th></tr>
+          </thead>
+          <tbody id="tabla-casos"><tr><td colspan="6">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script>
+  async function cargarCasos() {
+    const res = await fetch('/api/casos');
+    const tbody = document.getElementById('tabla-casos');
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="6">No se pudo cargar</td></tr>'; return; }
+    const casos = await res.json();
+    document.getElementById('contador-casos').textContent = `${casos.length} casos`;
+    if (casos.length === 0) { tbody.innerHTML = '<tr><td colspan="6">Sin casos registrados</td></tr>'; return; }
+
+    tbody.innerHTML = casos.map(c => `
+      <tr>
+        <td class="row-link" onclick="location.href='/detalle.html?id=${c.id}'">${c.numero_expediente}</td>
+        <td><span class="tag mat">${c.materia}</span></td>
+        <td>${c.juzgado_tribunal || '—'} — ${c.distrito_judicial || ''}</td>
+        <td>${c.abogado_responsable}</td>
+        <td>${c.proximo_plazo ? new Date(c.proximo_plazo).toLocaleDateString('es-BO') : '—'}</td>
+        <td><span class="tag plazo-ok">${c.estado}</span></td>
+      </tr>
+    `).join('');
+  }
+  cargarCasos();
+</script>
+</body>
+</html>

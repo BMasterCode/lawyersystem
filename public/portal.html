@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Mis casos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+      </div>
+      <div class="top-right"><div class="avatar" id="avatar">--</div></div>
+    </div>
+
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Mis casos</h1><p>Seguimiento de tus procesos en el estudio</p></div>
+      </div>
+
+      <div id="lista-casos" class="grid-2" style="grid-template-columns:1fr;">
+        <p>Cargando…</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script>
+  async function cargarMisCasos() {
+    const res = await fetch('/api/portal/mis-casos');
+    const cont = document.getElementById('lista-casos');
+    if (!res.ok) { cont.innerHTML = '<p>No se pudo cargar tus casos.</p>'; return; }
+    const casos = await res.json();
+    if (casos.length === 0) { cont.innerHTML = '<p>Todavía no tenés casos vinculados.</p>'; return; }
+
+    cont.innerHTML = casos.map(c => `
+      <div class="card">
+        <h3>${c.numero_expediente}</h3>
+        <p style="margin:0 0 10px;font-size:13px;color:var(--muted);">
+          ${c.juzgado_tribunal || 'Juzgado por asignar'} · rol: ${c.rol_en_caso}
+        </p>
+        <span class="tag mat">${c.materia}</span>
+        <span class="tag plazo-ok">${c.estado}</span>
+        <div style="margin-top:12px;">
+          <a class="row-link" href="/detalle.html?id=${c.id}">Ver detalle del caso →</a>
+        </div>
+      </div>
+    `).join('');
+  }
+  cargarMisCasos();
+</script>
+</body>
+</html>
