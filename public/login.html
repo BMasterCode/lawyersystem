@@ -11,33 +11,42 @@
 <body>
   <div class="login-shell">
     <div class="login-card">
+      <a href="/entrada.html" style="font-size:12px;color:var(--muted);text-decoration:none;">← Volver</a>
       <h1>Lex<span style="color:var(--gold)">System</span></h1>
-      <p>Ingresá con tu cuenta para ver tus casos.</p>
-
-      <div class="field">
-        <label>Tipo de cuenta</label>
-        <select id="tipoCuenta">
-          <option value="staff">Abogado / equipo del estudio</option>
-          <option value="cliente">Cliente</option>
-        </select>
-      </div>
+      <p>Ingresá con tu cuenta de abogado / equipo del estudio.</p>
 
       <form id="login-form">
         <div class="error-msg" id="error-msg"></div>
+
         <div class="field">
-          <label>Correo electrónico</label>
-          <input type="email" id="email" required autocomplete="username">
+          <label>CI (usuario)</label>
+          <input type="text" id="ci" required autocomplete="username">
         </div>
+
         <div class="field">
           <label>Contraseña</label>
-          <input type="password" id="password" required autocomplete="current-password">
+          <div class="pw-wrap">
+            <input type="password" id="password" required autocomplete="current-password">
+            <button type="button" class="pw-toggle" data-target="password">👁</button>
+          </div>
         </div>
+
         <button class="btn gold" type="submit" style="width:100%;" id="submit-btn">Ingresar</button>
+        <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:16px;">
+          ¿No tenés cuenta? <a href="/registro.html" style="color:var(--navy);font-weight:600;">Creá una acá</a>
+        </p>
       </form>
     </div>
   </div>
 
   <script>
+    document.querySelectorAll('.pw-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        input.type = input.type === 'password' ? 'text' : 'password';
+      });
+    });
+
     const form = document.getElementById('login-form');
     const errorMsg = document.getElementById('error-msg');
     const submitBtn = document.getElementById('submit-btn');
@@ -49,9 +58,8 @@
       submitBtn.textContent = 'Ingresando…';
 
       const body = {
-        email: document.getElementById('email').value.trim(),
+        ci: document.getElementById('ci').value.trim(),
         password: document.getElementById('password').value,
-        tipoCuenta: document.getElementById('tipoCuenta').value,
       };
 
       try {

@@ -25,6 +25,7 @@ CREATE TYPE estado_entrega     AS ENUM ('programado', 'enviado', 'fallido', 'lei
 CREATE TABLE usuario (
     id              SERIAL PRIMARY KEY,
     nombre          VARCHAR(150) NOT NULL,
+    ci              VARCHAR(20) NOT NULL UNIQUE,
     email           VARCHAR(150) NOT NULL UNIQUE,
     password_hash   VARCHAR(255) NOT NULL,
     telefono        VARCHAR(30),
@@ -43,7 +44,6 @@ CREATE TABLE cliente (
     representante_legal     VARCHAR(150),  -- solo si tipo = juridica
     telefono                VARCHAR(30),
     email                   VARCHAR(150),
-    password_hash           VARCHAR(255) NOT NULL, -- login al portal del cliente
     canal_preferido         canal_contacto NOT NULL DEFAULT 'correo',
     creado_en               TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -62,7 +62,8 @@ CREATE TABLE caso (
     moneda                  moneda_tipo DEFAULT 'BOB',
     fecha_inicio            DATE NOT NULL,
     estado                  estado_caso NOT NULL DEFAULT 'en_tramite',
-    abogado_responsable_id  INTEGER NOT NULL REFERENCES usuario(id)
+    abogado_responsable_id  INTEGER NOT NULL REFERENCES usuario(id),
+    codigo_vinculacion      VARCHAR(10) NOT NULL UNIQUE
 );
 
 -- ---------- CASO_CLIENTE (tabla puente N:M) ----------

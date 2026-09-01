@@ -25,6 +25,17 @@
     <div class="content">
       <div class="page-head">
         <div><h1>Mis casos</h1><p>Seguimiento de tus procesos en el estudio</p></div>
+        <button class="btn gold" id="btn-vincular">+ Ingresar código de caso</button>
+      </div>
+
+      <!-- Formulario para ingresar el código, oculto hasta que se toca el botón + -->
+      <div class="card hidden" id="form-vincular" style="margin-bottom:18px;">
+        <h3>Ingresá el código que te pasó tu abogado</h3>
+        <div class="error-msg" id="error-vincular"></div>
+        <div class="field">
+          <input type="text" id="input-codigo" placeholder="Ej. A1B2-C3D4" style="text-transform:uppercase;">
+        </div>
+        <button class="btn gold" id="confirmar-vincular">Vincular caso</button>
       </div>
 
       <div id="lista-casos" class="grid-2" style="grid-template-columns:1fr;">
@@ -35,6 +46,38 @@
 </div>
 
 <script src="/js/sidebar.js"></script>
+<script>
+  const btnVincular = document.getElementById('btn-vincular');
+  const formVincular = document.getElementById('form-vincular');
+  const errorVincular = document.getElementById('error-vincular');
+
+  btnVincular.addEventListener('click', () => {
+    formVincular.classList.toggle('hidden');
+  });
+
+  document.getElementById('confirmar-vincular').addEventListener('click', async () => {
+    const codigo = document.getElementById('input-codigo').value.trim();
+    errorVincular.style.display = 'none';
+    if (!codigo) return;
+
+    try {
+      const res = await fetch('/api/portal/vincular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo vincular el caso');
+
+      formVincular.classList.add('hidden');
+      document.getElementById('input-codigo').value = '';
+      cargarMisCasos();
+    } catch (err) {
+      errorVincular.textContent = err.message;
+      errorVincular.style.display = 'block';
+    }
+  });
+</script>
 <script>
   async function cargarMisCasos() {
     const res = await fetch('/api/portal/mis-casos');

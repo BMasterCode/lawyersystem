@@ -30,10 +30,11 @@ app.use(
   })
 );
 
-// Ruta raíz: si entran a "/" sin más, los mandamos al login
+// Ruta raíz: pantalla para elegir "abogado" o "cliente"
 app.get('/', (req, res) => {
-  res.redirect('/login.html');
+  res.redirect('/entrada.html');
 });
+
 // API
 app.use('/auth', authRoutes);
 app.use('/api/casos', casosRoutes);
@@ -42,7 +43,7 @@ app.use('/api/portal', portalRoutes);
 
 // Paginas que requieren sesion iniciada (protegemos el HTML tambien,
 // no solo la API, para que nadie vea la pantalla sin loguearse)
-app.get(['/dashboard.html', '/casos.html', '/detalle.html', '/portal.html'], requireLogin);
+app.get(['/dashboard.html', '/casos.html', '/detalle.html', '/portal.html', '/nuevo-caso.html'], requireLogin);
 
 // Archivos estaticos (css, js, html) al final para que las rutas de arriba
 // tengan prioridad

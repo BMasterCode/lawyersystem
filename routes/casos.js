@@ -1,9 +1,16 @@
 // routes/casos.js
 const express = require('express');
+const crypto = require('crypto');
 const pool = require('../db/pool');
 const { requireTipoCuenta } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Genera un código corto y fácil de dictar/copiar, ej. "F3K9-QX2P"
+function generarCodigoVinculacion() {
+  const bloque = () => crypto.randomBytes(2).toString('hex').toUpperCase();
+  return `${bloque()}-${bloque()}`;
+}
 
 // GET /api/casos  -> lista de casos (solo staff)
 router.get('/', requireTipoCuenta('staff'), async (req, res) => {
@@ -83,17 +90,19 @@ router.post('/', requireTipoCuenta('staff'), async (req, res) => {
     moneda, fecha_inicio,
   } = req.body;
 
+  const codigo_vinculacion = generarCodigoVinculacion();
+
   try {
     const { rows } = await pool.query(
       `INSERT INTO caso
         (numero_expediente, materia, departamento, distrito_judicial,
          juzgado_tribunal, norma_aplicable_base, contraparte, cuantia,
-         moneda, fecha_inicio, abogado_responsable_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         moneda, fecha_inicio, abogado_responsable_id, codigo_vinculacion)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING *`,
       [numero_expediente, materia, departamento, distrito_judicial,
         juzgado_tribunal, norma_aplicable_base, contraparte, cuantia,
-        moneda || 'BOB', fecha_inicio, req.session.user.id]
+        moneda || 'BOB', fecha_inicio, req.session.user.id, codigo_vinculacion]
     );
     res.status(201).json(rows[0]);
   } catch (err) {

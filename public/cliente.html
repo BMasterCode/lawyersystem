@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Ver mi caso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="login-shell">
+    <div class="login-card">
+      <a href="/entrada.html" style="font-size:12px;color:var(--muted);text-decoration:none;">← Volver</a>
+      <h1>Ver mi caso</h1>
+      <p>Ingresá tu CI y el código que te dio tu abogado.</p>
+
+      <form id="verificar-form">
+        <div class="error-msg" id="error-msg"></div>
+
+        <div class="field">
+          <label>Código de acceso</label>
+          <input type="text" id="codigo" required placeholder="Ej. A1B2-C3D4" style="text-transform:uppercase;">
+        </div>
+
+        <div class="field">
+          <label>Cédula de identidad</label>
+          <input type="text" id="ci_nit" required placeholder="Ej. 1234567 LP">
+        </div>
+
+        <button class="btn gold" type="submit" style="width:100%;" id="submit-btn">Validar información</button>
+        <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:16px;">
+          ¿No encontrás tu expediente? <a href="#" style="color:var(--navy);font-weight:600;">Escribí al estudio</a>.
+        </p>
+      </form>
+
+      <!-- Solo aparece si es la primera vez que este CI entra al sistema -->
+      <form id="datos-form" class="hidden" style="margin-top:18px;border-top:1px solid var(--line);padding-top:18px;">
+        <p style="font-size:13px;color:var(--muted);margin:0 0 12px;">
+          Es la primera vez que entrás — contanos un poco más para crear tu acceso.
+        </p>
+        <div class="error-msg" id="error-msg-2"></div>
+        <div class="field">
+          <label>Nombre completo</label>
+          <input type="text" id="nombre" required>
+        </div>
+        <div class="field">
+          <label>Correo electrónico</label>
+          <input type="email" id="correo">
+        </div>
+        <div class="field">
+          <label>Número de teléfono</label>
+          <input type="tel" id="telefono">
+        </div>
+        <button class="btn gold" type="submit" style="width:100%;" id="submit-btn-2">Crear mi acceso</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const verificarForm = document.getElementById('verificar-form');
+    const datosForm = document.getElementById('datos-form');
+    const errorMsg = document.getElementById('error-msg');
+    const errorMsg2 = document.getElementById('error-msg-2');
+    const submitBtn = document.getElementById('submit-btn');
+    const submitBtn2 = document.getElementById('submit-btn-2');
+
+    let ciActual = '';
+    let codigoActual = '';
+
+    verificarForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verificando…';
+
+      ciActual = document.getElementById('ci_nit').value.trim();
+      codigoActual = document.getElementById('codigo').value.trim();
+
+      try {
+        const res = await fetch('/auth/cliente/verificar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ci_nit: ciActual, codigo: codigoActual }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo verificar');
+
+        if (data.clienteNuevo) {
+          verificarForm.classList.add('hidden');
+          datosForm.classList.remove('hidden');
+        } else {
+          window.location.href = data.redirect;
+        }
+      } catch (err) {
+        errorMsg.textContent = err.message;
+        errorMsg.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Validar información';
+      }
+    });
+
+    datosForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg2.style.display = 'none';
+      submitBtn2.disabled = true;
+      submitBtn2.textContent = 'Creando…';
+
+      const body = {
+        ci_nit: ciActual,
+        codigo: codigoActual,
+        nombre: document.getElementById('nombre').value.trim(),
+        email: document.getElementById('correo').value.trim(),
+        telefono: document.getElementById('telefono').value.trim(),
+      };
+
+      try {
+        const res = await fetch('/auth/cliente/registrar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo crear tu acceso');
+        window.location.href = data.redirect;
+      } catch (err) {
+        errorMsg2.textContent = err.message;
+        errorMsg2.style.display = 'block';
+        submitBtn2.disabled = false;
+        submitBtn2.textContent = 'Crear mi acceso';
+      }
+    });
+  </script>
+</body>
+</html>
