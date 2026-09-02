@@ -81,9 +81,9 @@ router.post('/registro', async (req, res) => {
 // ============ CLIENTE (sin contraseña: CI + código) ============
 
 // POST /auth/cliente/verificar -> { ci_nit, codigo }
-// Si el CI ya existe como cliente, lo loguea y vincula el caso.
-// Si no existe, avisa que es cliente nuevo (sin loguear todavía) para
-// que el frontend pida nombre/correo/teléfono.
+// Busca el cliente por su código de acceso (uno solo por persona, agrupa
+// todos sus casos). Si el CI todavía no está registrado en esa cuenta,
+// es su primera vez y falta completar el perfil.
 router.post('/cliente/verificar', async (req, res) => {
   const { ci_nit, codigo } = req.body;
   if (!ci_nit || !codigo) {
@@ -91,30 +91,22 @@ router.post('/cliente/verificar', async (req, res) => {
   }
 
   try {
-    const caso = await pool.query(
-      'SELECT id FROM caso WHERE codigo_vinculacion = $1',
+    const cliente = await pool.query(
+      'SELECT * FROM cliente WHERE codigo_acceso = $1',
       [codigo.trim().toUpperCase()]
     );
-    if (caso.rowCount === 0) {
+    if (cliente.rowCount === 0) {
       return res.status(404).json({ error: 'El código no es válido' });
     }
+    const clienteRow = cliente.rows[0];
 
-    const cliente = await pool.query('SELECT * FROM cliente WHERE ci_nit = $1', [ci_nit.trim()]);
-
-    if (cliente.rowCount === 0) {
-      return res.json({ clienteNuevo: true });
+    if (!clienteRow.ci_nit) {
+      // Primera vez que se usa este código: el nombre ya lo puso el abogado
+      return res.json({ clienteNuevo: true, nombre: clienteRow.nombre_razon_social });
     }
 
-    const clienteRow = cliente.rows[0];
-    const yaVinculado = await pool.query(
-      'SELECT 1 FROM caso_cliente WHERE caso_id = $1 AND cliente_id = $2',
-      [caso.rows[0].id, clienteRow.id]
-    );
-    if (yaVinculado.rowCount === 0) {
-      await pool.query(
-        'INSERT INTO caso_cliente (caso_id, cliente_id, rol_en_caso) VALUES ($1,$2,$3)',
-        [caso.rows[0].id, clienteRow.id, 'otro']
-      );
+    if (clienteRow.ci_nit !== ci_nit.trim()) {
+      return res.status(403).json({ error: 'Ese código ya pertenece a otra persona. Revisá tu CI.' });
     }
 
     req.session.user = {
@@ -129,37 +121,35 @@ router.post('/cliente/verificar', async (req, res) => {
   }
 });
 
-// POST /auth/cliente/registrar -> primera vez: crea el cliente y lo vincula
-// { ci_nit, codigo, nombre, email, telefono }
+// POST /auth/cliente/registrar -> primera vez: completa CI, correo y teléfono
+// { ci_nit, codigo, email, telefono }  (el nombre ya lo cargó el abogado)
 router.post('/cliente/registrar', async (req, res) => {
-  const { ci_nit, codigo, nombre, email, telefono } = req.body;
-  if (!ci_nit || !codigo || !nombre) {
+  const { ci_nit, codigo, email, telefono } = req.body;
+  if (!ci_nit || !codigo) {
     return res.status(400).json({ error: 'Faltan datos obligatorios' });
   }
 
   try {
-    const caso = await pool.query(
-      'SELECT id FROM caso WHERE codigo_vinculacion = $1',
+    const cliente = await pool.query(
+      'SELECT * FROM cliente WHERE codigo_acceso = $1',
       [codigo.trim().toUpperCase()]
     );
-    if (caso.rowCount === 0) {
+    if (cliente.rowCount === 0) {
       return res.status(404).json({ error: 'El código no es válido' });
     }
+    if (cliente.rows[0].ci_nit) {
+      return res.status(409).json({ error: 'Este código ya fue registrado antes' });
+    }
 
-    const existe = await pool.query('SELECT id FROM cliente WHERE ci_nit = $1', [ci_nit.trim()]);
-    if (existe.rowCount > 0) {
-      return res.status(409).json({ error: 'Ese CI ya está registrado' });
+    const ciExistente = await pool.query('SELECT id FROM cliente WHERE ci_nit = $1', [ci_nit.trim()]);
+    if (ciExistente.rowCount > 0) {
+      return res.status(409).json({ error: 'Ese CI ya está en uso por otra cuenta' });
     }
 
     const { rows } = await pool.query(
-      `INSERT INTO cliente (tipo, nombre_razon_social, ci_nit, telefono, email, canal_preferido)
-       VALUES ('natural',$1,$2,$3,$4,'correo') RETURNING id, nombre_razon_social`,
-      [nombre, ci_nit.trim(), telefono || null, email || null]
-    );
-
-    await pool.query(
-      'INSERT INTO caso_cliente (caso_id, cliente_id, rol_en_caso) VALUES ($1,$2,$3)',
-      [caso.rows[0].id, rows[0].id, 'otro']
+      `UPDATE cliente SET ci_nit = $1, email = $2, telefono = $3
+       WHERE id = $4 RETURNING id, nombre_razon_social`,
+      [ci_nit.trim(), email || null, telefono || null, cliente.rows[0].id]
     );
 
     req.session.user = {
@@ -170,7 +160,7 @@ router.post('/cliente/registrar', async (req, res) => {
     res.status(201).json({ redirect: '/portal.html' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al crear tu cuenta' });
+    res.status(500).json({ error: 'Error al completar tu registro' });
   }
 });
 

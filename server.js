@@ -8,6 +8,7 @@ const path = require('path');
 const pool = require('./db/pool');
 const authRoutes = require('./routes/auth');
 const casosRoutes = require('./routes/casos');
+const documentosRoutes = require('./routes/documentos');
 const dashboardRoutes = require('./routes/dashboard');
 const portalRoutes = require('./routes/portal');
 const { requireLogin } = require('./middleware/auth');
@@ -38,6 +39,8 @@ app.get('/', (req, res) => {
 // API
 app.use('/auth', authRoutes);
 app.use('/api/casos', casosRoutes);
+app.use('/api/casos', documentosRoutes); // /api/casos/:casoId/documentos (subir)
+app.use('/api/documentos', documentosRoutes); // /api/documentos/:id/descargar
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/portal', portalRoutes);
 

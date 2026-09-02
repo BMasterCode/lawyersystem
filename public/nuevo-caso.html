@@ -29,8 +29,8 @@
 
       <!-- Se muestra después de crear el caso -->
       <div class="card hidden" id="resultado" style="margin-bottom:18px;border-color:var(--gold);">
-        <h3>Caso creado — código para el cliente</h3>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 10px;">
+        <h3 id="resultado-titulo">Caso creado — código para el cliente</h3>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 10px;" id="resultado-texto">
           Pasale este código al cliente por WhatsApp, correo o el medio que prefieran.
           Con él va a poder ver este caso desde su panel. No lo compartas con nadie más.
         </p>
@@ -42,6 +42,13 @@
       <form id="caso-form" class="card">
         <div class="error-msg" id="error-msg"></div>
 
+        <div class="field">
+          <label>Nombre del cliente (quien contrata)</label>
+          <input type="text" id="nombre_cliente" required placeholder="Rosa Quispe Mamani">
+          <p style="font-size:11px;color:var(--muted);margin:4px 0 0;">
+            Si ese nombre ya existe en el sistema, se reutiliza su mismo código de acceso.
+          </p>
+        </div>
         <div class="field">
           <label>Nº de expediente</label>
           <input type="text" id="numero_expediente" required placeholder="CIV-0231/2025">
@@ -114,6 +121,7 @@
     submitBtn.textContent = 'Creando…';
 
     const body = {
+      nombre_cliente: document.getElementById('nombre_cliente').value.trim(),
       numero_expediente: document.getElementById('numero_expediente').value.trim(),
       materia: document.getElementById('materia').value,
       departamento: document.getElementById('departamento').value.trim(),
@@ -137,10 +145,16 @@
 
       form.classList.add('hidden');
       resultado.classList.remove('hidden');
-      codigoGenerado.textContent = data.codigo_vinculacion;
+      codigoGenerado.textContent = data.codigo_acceso;
+
+      if (data.cliente_reutilizado) {
+        document.getElementById('resultado-titulo').textContent = 'Caso creado — este cliente ya tenía código';
+        document.getElementById('resultado-texto').textContent =
+          'Este cliente ya tiene un código de otro caso anterior — es el mismo, no hace falta pasarle uno nuevo. Al entrar va a ver todos sus casos juntos.';
+      }
 
       document.getElementById('copiar-btn').addEventListener('click', () => {
-        navigator.clipboard.writeText(data.codigo_vinculacion);
+        navigator.clipboard.writeText(data.codigo_acceso);
         document.getElementById('copiar-btn').textContent = 'Copiado ✓';
       });
     } catch (err) {

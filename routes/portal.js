@@ -5,7 +5,7 @@ const { requireTipoCuenta } = require('../middleware/auth');
 
 const router = express.Router();
 
-// GET /api/portal/mis-casos -> casos vinculados al cliente logueado
+// GET /api/portal/mis-casos -> todos los casos vinculados al cliente logueado
 router.get('/mis-casos', requireTipoCuenta('cliente'), async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -24,38 +24,37 @@ router.get('/mis-casos', requireTipoCuenta('cliente'), async (req, res) => {
   }
 });
 
-// POST /api/portal/vincular -> el cliente ingresa el código que le pasó
-// su abogado y queda vinculado a ese caso
+// POST /api/portal/vincular -> agrega los casos de otro código de cliente
+// a la cuenta ya logueada (ej. el abogado te cargó dos veces, o tenés un
+// código de otro caso distinto)
 router.post('/vincular', requireTipoCuenta('cliente'), async (req, res) => {
-  const { codigo, rol_en_caso } = req.body;
-  if (!codigo) return res.status(400).json({ error: 'Ingresá el código del caso' });
+  const { codigo } = req.body;
+  if (!codigo) return res.status(400).json({ error: 'Ingresá el código' });
 
   try {
-    const caso = await pool.query(
-      'SELECT id, numero_expediente FROM caso WHERE codigo_vinculacion = $1',
+    const otroCliente = await pool.query(
+      'SELECT id FROM cliente WHERE codigo_acceso = $1',
       [codigo.trim().toUpperCase()]
     );
-    if (caso.rowCount === 0) {
+    if (otroCliente.rowCount === 0) {
       return res.status(404).json({ error: 'Código inválido, revisá que esté bien escrito' });
     }
-
-    const yaVinculado = await pool.query(
-      'SELECT 1 FROM caso_cliente WHERE caso_id = $1 AND cliente_id = $2',
-      [caso.rows[0].id, req.session.user.id]
-    );
-    if (yaVinculado.rowCount > 0) {
-      return res.status(409).json({ error: 'Ese caso ya está en tu panel' });
+    if (otroCliente.rows[0].id === req.session.user.id) {
+      return res.status(409).json({ error: 'Ese código ya es el tuyo' });
     }
 
-    await pool.query(
-      'INSERT INTO caso_cliente (caso_id, cliente_id, rol_en_caso) VALUES ($1,$2,$3)',
-      [caso.rows[0].id, req.session.user.id, rol_en_caso || 'otro']
+    const resultado = await pool.query(
+      `INSERT INTO caso_cliente (caso_id, cliente_id, rol_en_caso)
+       SELECT caso_id, $1, rol_en_caso
+       FROM caso_cliente WHERE cliente_id = $2
+       ON CONFLICT (caso_id, cliente_id) DO NOTHING`,
+      [req.session.user.id, otroCliente.rows[0].id]
     );
 
-    res.status(201).json({ numero_expediente: caso.rows[0].numero_expediente });
+    res.status(201).json({ casosAgregados: resultado.rowCount });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error al vincular el caso' });
+    res.status(500).json({ error: 'Error al vincular el código' });
   }
 });
 

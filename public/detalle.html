@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Detalle de caso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+      </div>
+      <div class="top-right"><div class="avatar" id="avatar">--</div></div>
+    </div>
+
+    <div class="content">
+      <div class="page-head">
+        <div><h1 id="titulo-caso">Cargando…</h1><p id="subtitulo-caso"></p></div>
+      </div>
+
+      <!-- Código de acceso: solo lo ve el staff -->
+      <div class="banner hidden" id="banner-codigo">
+        Código de acceso del cliente: <b id="codigo-cliente"></b>
+        <button class="btn ghost" id="copiar-codigo" style="background:#fff;">Copiar</button>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <div class="card" style="margin-bottom:16px;">
+            <h3>Datos del proceso</h3>
+            <div class="info-grid" id="info-grid">Cargando…</div>
+          </div>
+
+          <div class="card" style="margin-bottom:16px;">
+            <h3>Plazos</h3>
+            <table>
+              <thead><tr><th>Tipo</th><th>Vence</th><th>Estado</th></tr></thead>
+              <tbody id="tabla-plazos"><tr><td colspan="3">Sin plazos registrados</td></tr></tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3>Audiencias</h3>
+            <table>
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Lugar</th><th>Estado</th></tr></thead>
+              <tbody id="tabla-audiencias"><tr><td colspan="4">Sin audiencias registradas</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h3>Documentos</h3>
+            <div id="lista-documentos"><p style="font-size:13px;color:var(--muted);">Cargando…</p></div>
+
+            <!-- Solo el staff puede subir -->
+            <form id="form-subir" class="hidden" style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px;">
+              <div class="error-msg" id="error-subir"></div>
+              <div class="field">
+                <label>Archivo (PDF)</label>
+                <input type="file" id="archivo" accept="application/pdf" required>
+              </div>
+              <div class="field">
+                <label>Tipo de documento</label>
+                <select id="tipo_documento">
+                  <option value="demanda">Demanda</option>
+                  <option value="contestacion">Contestación</option>
+                  <option value="prueba">Prueba</option>
+                  <option value="poder">Poder</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;">
+                <input type="checkbox" id="visible_en_portal">
+                Visible para el cliente
+              </label>
+              <button class="btn gold" type="submit" style="width:100%;" id="btn-subir">Subir documento</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const casoId = params.get('id');
+  let esStaff = false;
+
+  async function cargarDetalle() {
+    const meRes = await fetch('/auth/me');
+    const { user } = await meRes.json();
+    esStaff = user.tipoCuenta === 'staff';
+
+    const res = await fetch(`/api/casos/${casoId}`);
+    if (!res.ok) {
+      document.getElementById('titulo-caso').textContent = 'No se pudo cargar el caso';
+      return;
+    }
+    const { caso, plazos, audiencias, documentos, clientes } = await res.json();
+
+    document.getElementById('titulo-caso').textContent =
+      `${caso.numero_expediente} ${caso.contraparte ? '— c/ ' + caso.contraparte : ''}`;
+    document.getElementById('subtitulo-caso').textContent =
+      `${caso.juzgado_tribunal || ''} ${caso.distrito_judicial ? '— ' + caso.distrito_judicial : ''}`;
+
+    document.getElementById('info-grid').innerHTML = `
+      <div class="info-field"><div class="k">Materia</div><div class="v">${caso.materia}</div></div>
+      <div class="info-field"><div class="k">Nº de expediente</div><div class="v">${caso.numero_expediente}</div></div>
+      <div class="info-field"><div class="k">Distrito judicial</div><div class="v">${caso.distrito_judicial || '—'}</div></div>
+      <div class="info-field"><div class="k">Juzgado</div><div class="v">${caso.juzgado_tribunal || '—'}</div></div>
+      <div class="info-field"><div class="k">Contraparte</div><div class="v">${caso.contraparte || '—'}</div></div>
+      <div class="info-field"><div class="k">Fecha de inicio</div><div class="v">${new Date(caso.fecha_inicio).toLocaleDateString('es-BO')}</div></div>
+      <div class="info-field"><div class="k">Cuantía</div><div class="v">${caso.cuantia ? caso.moneda + ' ' + caso.cuantia : '—'}</div></div>
+      <div class="info-field"><div class="k">Norma aplicable</div><div class="v">${caso.norma_aplicable_base || '—'}</div></div>
+      <div class="info-field"><div class="k">Estado</div><div class="v"><span class="tag plazo-ok">${caso.estado}</span></div></div>
+    `;
+
+    const tablaPlazos = document.getElementById('tabla-plazos');
+    tablaPlazos.innerHTML = plazos.length
+      ? plazos.map(p => `
+        <tr>
+          <td>${p.tipo_plazo}</td>
+          <td>${new Date(p.fecha_vencimiento_calculada).toLocaleDateString('es-BO')}</td>
+          <td><span class="tag plazo-${p.estado === 'urgente' ? 'urgente' : p.estado === 'proximo' ? 'proximo' : 'ok'}">${p.estado}</span></td>
+        </tr>`).join('')
+      : '<tr><td colspan="3">Sin plazos registrados</td></tr>';
+
+    const tablaAudiencias = document.getElementById('tabla-audiencias');
+    tablaAudiencias.innerHTML = audiencias.length
+      ? audiencias.map(a => `
+        <tr>
+          <td>${new Date(a.fecha_hora).toLocaleString('es-BO')}</td>
+          <td>${a.tipo_audiencia}</td>
+          <td>${a.juzgado_sala || '—'}</td>
+          <td><span class="tag plazo-ok">${a.estado}</span></td>
+        </tr>`).join('')
+      : '<tr><td colspan="4">Sin audiencias registradas</td></tr>';
+
+    renderDocumentos(documentos);
+
+    if (esStaff && clientes && clientes.length) {
+      const banner = document.getElementById('banner-codigo');
+      banner.classList.remove('hidden');
+      document.getElementById('codigo-cliente').textContent = clientes[0].codigo_acceso;
+      document.getElementById('copiar-codigo').addEventListener('click', () => {
+        navigator.clipboard.writeText(clientes[0].codigo_acceso);
+      });
+      document.getElementById('form-subir').classList.remove('hidden');
+    }
+  }
+
+  function renderDocumentos(documentos) {
+    const cont = document.getElementById('lista-documentos');
+    if (documentos.length === 0) {
+      cont.innerHTML = '<p style="font-size:13px;color:var(--muted);">Todavía no hay documentos.</p>';
+      return;
+    }
+    cont.innerHTML = documentos.map(d => `
+      <div class="doc-item">
+        <div class="meta">
+          📄 <a href="/api/documentos/${d.id}/descargar" style="color:var(--navy);font-weight:600;">${d.nombre_archivo}</a>
+          <span class="size">${d.peso_kb ? d.peso_kb + ' KB' : ''}</span>
+        </div>
+        ${esStaff ? `<span class="mono" style="font-size:11px;color:${d.visible_en_portal ? 'var(--green)' : 'var(--muted)'}">${d.visible_en_portal ? 'visible al cliente' : 'solo estudio'}</span>` : ''}
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('form-subir').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorMsg = document.getElementById('error-subir');
+    const btnSubir = document.getElementById('btn-subir');
+    errorMsg.style.display = 'none';
+    btnSubir.disabled = true;
+    btnSubir.textContent = 'Subiendo…';
+
+    const formData = new FormData();
+    formData.append('archivo', document.getElementById('archivo').files[0]);
+    formData.append('tipo_documento', document.getElementById('tipo_documento').value);
+    formData.append('visible_en_portal', document.getElementById('visible_en_portal').checked);
+
+    try {
+      const res = await fetch(`/api/casos/${casoId}/documentos`, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo subir el documento');
+      document.getElementById('form-subir').reset();
+      cargarDetalle();
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.style.display = 'block';
+    } finally {
+      btnSubir.disabled = false;
+      btnSubir.textContent = 'Subir documento';
+    }
+  });
+
+  cargarDetalle();
+</script>
+</body>
+</html>

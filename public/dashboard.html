@@ -44,10 +44,10 @@
         <h3>Próximos vencimientos</h3>
         <table>
           <thead>
-            <tr><th>Expediente</th><th>Materia</th><th>Tipo de plazo</th><th>Vence</th><th>Estado</th></tr>
+            <tr><th>Expediente</th><th>Cliente</th><th>Materia</th><th>Tipo de plazo</th><th>Vence</th><th>Estado</th></tr>
           </thead>
           <tbody id="tabla-plazos">
-            <tr><td colspan="5">Cargando…</td></tr>
+            <tr><td colspan="6">Cargando…</td></tr>
           </tbody>
         </table>
       </div>
@@ -77,13 +77,14 @@
   async function cargarCasosConPlazos() {
     const res = await fetch('/api/casos');
     const tbody = document.getElementById('tabla-plazos');
-    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="5">No se pudo cargar</td></tr>'; return; }
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="6">No se pudo cargar</td></tr>'; return; }
     const casos = await res.json();
-    if (casos.length === 0) { tbody.innerHTML = '<tr><td colspan="5">Sin casos registrados</td></tr>'; return; }
+    if (casos.length === 0) { tbody.innerHTML = '<tr><td colspan="6">Sin casos registrados</td></tr>'; return; }
 
     tbody.innerHTML = casos.map(c => `
       <tr>
         <td class="row-link" onclick="location.href='/detalle.html?id=${c.id}'">${c.numero_expediente}</td>
+        <td>${c.cliente || '—'}</td>
         <td><span class="tag mat">${c.materia}</span></td>
         <td>${c.juzgado_tribunal || '—'}</td>
         <td>${c.proximo_plazo ? new Date(c.proximo_plazo).toLocaleDateString('es-BO') : '—'}</td>
