@@ -24,22 +24,29 @@ const storage = multer.diskStorage({
   },
 });
 
+// Cualquier tipo de archivo (PDF, Word, Excel, imágenes, etc.)
 const upload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype !== 'application/pdf') {
-      return cb(new Error('Solo se permiten archivos PDF'));
-    }
-    cb(null, true);
-  },
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
 });
 
-// POST /api/casos/:casoId/documentos -> subir un PDF (solo staff)
+// Envuelve multer para que, si falla, responda JSON en vez de la página
+// de error HTML de Express (eso es lo que causaba "Unexpected token '<'")
+function subirArchivo(req, res, next) {
+  upload.single('archivo')(req, res, (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(400).json({ error: err.message || 'Error al subir el archivo' });
+    }
+    next();
+  });
+}
+
+// POST /api/casos/:casoId/documentos -> subir un archivo (solo staff)
 router.post(
   '/:casoId/documentos',
   requireTipoCuenta('staff'),
-  upload.single('archivo'),
+  subirArchivo,
   async (req, res) => {
     const { casoId } = req.params;
     const { tipo_documento, visible_en_portal } = req.body;

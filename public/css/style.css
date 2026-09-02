@@ -157,6 +157,20 @@ tr:hover td{background:var(--paper);}
 .hidden{display:none !important;}
 .note{font-size:12px;color:var(--muted);background:var(--paper-2);border-radius:8px;padding:10px 12px;margin-top:16px;}
 
+/* ---------- detalle de caso ---------- */
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.info-field{background:var(--paper);border-radius:8px;padding:10px 12px;}
+.info-field .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+.info-field .v{font-size:14px;margin-top:3px;font-weight:600;color:var(--ink);}
+@media (max-width:720px){ .info-grid{grid-template-columns:1fr 1fr;} }
+
+.doc-item{display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:#fff;gap:10px;}
+.doc-item .meta{display:flex;gap:8px;align-items:center;font-size:13px;overflow:hidden;text-overflow:ellipsis;}
+.doc-item .size{font-size:11px;color:var(--green);background:#dfe9e2;padding:2px 8px;border-radius:10px;flex-shrink:0;}
+
+.banner{background:var(--navy-2);color:#fff;border-radius:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;font-size:13px;gap:10px;flex-wrap:wrap;}
+.banner b{color:var(--gold-light);}
+
 @media (max-width: 720px){
   .kpi-row{grid-template-columns:repeat(2,1fr);}
   .grid-2{grid-template-columns:1fr;}

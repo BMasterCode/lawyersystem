@@ -32,9 +32,9 @@
       <div class="card" style="padding:0;">
         <table>
           <thead>
-            <tr><th>Expediente</th><th>Cliente</th><th>Materia</th><th>Juzgado / distrito</th><th>Responsable</th><th>Próximo plazo</th><th>Estado</th></tr>
+            <tr><th>Expediente</th><th>Cliente</th><th>Materia</th><th>Juzgado / distrito</th><th>Responsable</th><th>Próximo plazo</th><th>Estado</th><th>Acciones</th></tr>
           </thead>
-          <tbody id="tabla-casos"><tr><td colspan="7">Cargando…</td></tr></tbody>
+          <tbody id="tabla-casos"><tr><td colspan="8">Cargando…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -46,10 +46,10 @@
   async function cargarCasos() {
     const res = await fetch('/api/casos');
     const tbody = document.getElementById('tabla-casos');
-    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="7">No se pudo cargar</td></tr>'; return; }
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="8">No se pudo cargar</td></tr>'; return; }
     const casos = await res.json();
     document.getElementById('contador-casos').textContent = `${casos.length} casos`;
-    if (casos.length === 0) { tbody.innerHTML = '<tr><td colspan="7">Sin casos registrados</td></tr>'; return; }
+    if (casos.length === 0) { tbody.innerHTML = '<tr><td colspan="8">Sin casos registrados</td></tr>'; return; }
 
     tbody.innerHTML = casos.map(c => `
       <tr>
@@ -59,9 +59,31 @@
         <td>${c.juzgado_tribunal || '—'} — ${c.distrito_judicial || ''}</td>
         <td>${c.abogado_responsable}</td>
         <td>${c.proximo_plazo ? new Date(c.proximo_plazo).toLocaleDateString('es-BO') : '—'}</td>
-        <td><span class="tag plazo-ok">${c.estado}</span></td>
+        <td><span class="tag ${c.estado === 'archivado' ? 'mat' : 'plazo-ok'}">${c.estado}</span></td>
+        <td style="white-space:nowrap;">
+          ${c.estado !== 'archivado' ? `<button class="btn ghost" style="padding:5px 10px;font-size:11px;" onclick="terminarCaso(${c.id})">Terminar</button>` : ''}
+          <button class="btn ghost" style="padding:5px 10px;font-size:11px;color:var(--red);" onclick="eliminarCaso(${c.id})">Eliminar</button>
+        </td>
       </tr>
     `).join('');
+  }
+
+  async function terminarCaso(id) {
+    if (!confirm('¿Marcar este caso como archivado/terminado?')) return;
+    const res = await fetch(`/api/casos/${id}/estado`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado: 'archivado' }),
+    });
+    if (res.ok) cargarCasos();
+    else alert('No se pudo actualizar el caso');
+  }
+
+  async function eliminarCaso(id) {
+    if (!confirm('Esto elimina el caso y TODOS sus documentos, plazos y audiencias. ¿Confirmás?')) return;
+    const res = await fetch(`/api/casos/${id}`, { method: 'DELETE' });
+    if (res.ok) cargarCasos();
+    else alert('No se pudo eliminar el caso');
   }
   cargarCasos();
 </script>

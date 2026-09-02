@@ -170,4 +170,84 @@ router.post('/', requireTipoCuenta('staff'), async (req, res) => {
   }
 });
 
+// POST /api/casos/:id/plazos -> agregar un plazo (solo staff)
+router.post('/:id/plazos', requireTipoCuenta('staff'), async (req, res) => {
+  const { id } = req.params;
+  const { tipo_plazo, base_legal, fecha_inicio_computo, dias_habiles, fecha_vencimiento_calculada, estado } = req.body;
+
+  if (!tipo_plazo || !fecha_vencimiento_calculada) {
+    return res.status(400).json({ error: 'Faltan datos obligatorios' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO plazo
+        (caso_id, tipo_plazo, base_legal, fecha_inicio_computo, dias_habiles, fecha_vencimiento_calculada, estado)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [id, tipo_plazo, base_legal || null, fecha_inicio_computo || null,
+        dias_habiles || null, fecha_vencimiento_calculada, estado || 'en_plazo']
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al agregar el plazo' });
+  }
+});
+
+// POST /api/casos/:id/audiencias -> agregar una audiencia (solo staff)
+router.post('/:id/audiencias', requireTipoCuenta('staff'), async (req, res) => {
+  const { id } = req.params;
+  const { fecha_hora, tipo_audiencia, juzgado_sala, estado } = req.body;
+
+  if (!fecha_hora || !tipo_audiencia) {
+    return res.status(400).json({ error: 'Faltan datos obligatorios' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO audiencia (caso_id, fecha_hora, tipo_audiencia, juzgado_sala, estado)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [id, fecha_hora, tipo_audiencia, juzgado_sala || null, estado || 'programada']
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al agregar la audiencia' });
+  }
+});
+
+// PATCH /api/casos/:id/estado -> cambiar el estado (ej. terminar/archivar) (solo staff)
+router.patch('/:id/estado', requireTipoCuenta('staff'), async (req, res) => {
+  const { id } = req.params;
+  const { estado } = req.body;
+  const validos = ['en_tramite', 'con_audiencia', 'suspendido', 'archivado'];
+  if (!validos.includes(estado)) {
+    return res.status(400).json({ error: 'Estado inválido' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      'UPDATE caso SET estado = $1 WHERE id = $2 RETURNING id, estado',
+      [estado, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Caso no encontrado' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al actualizar el estado' });
+  }
+});
+
+// DELETE /api/casos/:id -> eliminar un caso y todo lo relacionado (solo staff)
+router.delete('/:id', requireTipoCuenta('staff'), async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM caso WHERE id = $1', [req.params.id]);
+    if (rowCount === 0) return res.status(404).json({ error: 'Caso no encontrado' });
+    res.json({ eliminado: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al eliminar el caso' });
+  }
+});
+
 module.exports = router;

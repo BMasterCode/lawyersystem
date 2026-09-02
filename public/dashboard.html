@@ -78,8 +78,8 @@
     const res = await fetch('/api/casos');
     const tbody = document.getElementById('tabla-plazos');
     if (!res.ok) { tbody.innerHTML = '<tr><td colspan="6">No se pudo cargar</td></tr>'; return; }
-    const casos = await res.json();
-    if (casos.length === 0) { tbody.innerHTML = '<tr><td colspan="6">Sin casos registrados</td></tr>'; return; }
+    const casos = (await res.json()).filter(c => c.estado !== 'archivado');
+    if (casos.length === 0) { tbody.innerHTML = '<tr><td colspan="6">Sin casos activos</td></tr>'; return; }
 
     tbody.innerHTML = casos.map(c => `
       <tr>
