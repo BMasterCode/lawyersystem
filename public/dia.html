@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Horario del día</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+      </div>
+      <div class="top-right"><div class="avatar" id="avatar">--</div></div>
+    </div>
+
+    <div class="content">
+      <button class="btn ghost mt-8" onclick="location.href='/agenda.html'">← Volver a la agenda</button>
+
+      <div class="page-head">
+        <div><h1 id="titulo-dia">Cargando…</h1><p>Tocá "+ Agendar algo" para elegir de qué hora a qué hora</p></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Horario</h3>
+          <div class="day-timeline" id="timeline"></div>
+        </div>
+
+        <div class="card">
+          <div class="flex-between">
+            <h3 style="margin:0;">Agendado este día</h3>
+            <button class="btn gold" id="btn-add" style="padding:7px 12px;font-size:12px;">+ Agendar algo</button>
+          </div>
+          <div id="lista-eventos" class="mt-12"></div>
+
+          <form id="form-evento" class="hidden mt-12" style="border-top:1px solid var(--line);padding-top:14px;">
+            <div class="error-msg" id="error-evento"></div>
+            <div class="field">
+              <label>Caso</label>
+              <select id="ev-caso" required></select>
+            </div>
+            <div class="field">
+              <label>Tipo</label>
+              <select id="ev-tipo">
+                <option value="audiencia">Audiencia</option>
+                <option value="plazo">Plazo (vence este día)</option>
+              </select>
+            </div>
+            <div id="ev-campos-hora">
+              <div class="field"><label>Hora de inicio</label><input type="time" id="ev-hora-inicio" value="09:00"></div>
+              <div class="field"><label>Hora de fin</label><input type="time" id="ev-hora-fin" value="10:00"></div>
+            </div>
+            <div class="field">
+              <label id="ev-lbl-detalle">Tipo de audiencia</label>
+              <input type="text" id="ev-detalle" required placeholder="Audiencia preliminar">
+            </div>
+            <div class="field" id="ev-campo-lugar">
+              <label>Juzgado / sala</label>
+              <input type="text" id="ev-lugar">
+            </div>
+            <button class="btn gold w-full" type="submit">Guardar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const fecha = params.get('fecha'); // YYYY-MM-DD
+  const HORA_INICIO = 7, HORA_FIN = 21; // franja visible del horario: 7:00 a 21:00
+
+  let eventosDia = { audiencias: [], plazos: [] };
+
+  document.getElementById('titulo-dia').textContent = new Date(fecha + 'T00:00:00')
+    .toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  function renderTimeline() {
+    const cont = document.getElementById('timeline');
+    let filas = '';
+    for (let h = HORA_INICIO; h <= HORA_FIN; h++) {
+      const eventosHora = eventosDia.audiencias.filter(a => new Date(a.fecha_hora).getHours() === h);
+      filas += `
+        <div class="day-hour-row">
+          <div class="day-hour-label">${String(h).padStart(2, '0')}:00</div>
+          <div class="day-hour-content">
+            ${eventosHora.map(a => `<div class="day-event">${a.tipo_audiencia} — ${a.cliente || 'sin cliente'}</div>`).join('')}
+          </div>
+        </div>`;
+    }
+    cont.innerHTML = filas;
+  }
+
+  function renderListaEventos() {
+    const cont = document.getElementById('lista-eventos');
+    if (eventosDia.audiencias.length === 0 && eventosDia.plazos.length === 0) {
+      cont.innerHTML = '<p class="text-sm text-muted">Nada agendado este día todavía.</p>';
+      return;
+    }
+    cont.innerHTML = `
+      ${eventosDia.audiencias.map(a => `
+        <div class="list-line">
+          <span class="flex-row"><span class="dot dot-red"></span>
+            ${new Date(a.fecha_hora).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}${a.hora_fin ? ' – ' + new Date(a.hora_fin).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : ''}
+            — ${a.tipo_audiencia} · ${a.cliente || 'sin cliente'}</span>
+          <span class="mono text-xs">${a.numero_expediente}</span>
+        </div>`).join('')}
+      ${eventosDia.plazos.map(p => `
+        <div class="list-line">
+          <span class="flex-row"><span class="dot dot-amber"></span>
+            Vence: ${p.tipo_plazo} · ${p.cliente || 'sin cliente'}</span>
+          <span class="mono text-xs">${p.numero_expediente}</span>
+        </div>`).join('')}
+    `;
+  }
+
+  async function cargarDia() {
+    const res = await fetch(`/api/agenda/dia?fecha=${fecha}`);
+    eventosDia = res.ok ? await res.json() : { audiencias: [], plazos: [] };
+    renderTimeline();
+    renderListaEventos();
+  }
+
+  async function cargarCasos() {
+    const res = await fetch('/api/casos');
+    if (!res.ok) return;
+    const casos = await res.json();
+    document.getElementById('ev-caso').innerHTML = casos
+      .map(c => `<option value="${c.id}">${c.numero_expediente} — ${c.cliente || 'sin cliente'}</option>`)
+      .join('');
+  }
+
+  document.getElementById('btn-add').addEventListener('click', () => {
+    document.getElementById('form-evento').classList.toggle('hidden');
+  });
+
+  document.getElementById('ev-tipo').addEventListener('change', (e) => {
+    const esAudiencia = e.target.value === 'audiencia';
+    document.getElementById('ev-campos-hora').classList.toggle('hidden', !esAudiencia);
+    document.getElementById('ev-campo-lugar').classList.toggle('hidden', !esAudiencia);
+    document.getElementById('ev-lbl-detalle').textContent = esAudiencia ? 'Tipo de audiencia' : 'Tipo de plazo';
+  });
+
+  document.getElementById('form-evento').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorMsg = document.getElementById('error-evento');
+    errorMsg.style.display = 'none';
+
+    const casoId = document.getElementById('ev-caso').value;
+    const tipo = document.getElementById('ev-tipo').value;
+
+    try {
+      let res;
+      if (tipo === 'audiencia') {
+        const horaInicio = document.getElementById('ev-hora-inicio').value || '09:00';
+        const horaFin = document.getElementById('ev-hora-fin').value;
+        res = await fetch(`/api/casos/${casoId}/audiencias`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fecha_hora: `${fecha}T${horaInicio}`,
+            hora_fin: horaFin ? `${fecha}T${horaFin}` : null,
+            tipo_audiencia: document.getElementById('ev-detalle').value.trim(),
+            juzgado_sala: document.getElementById('ev-lugar').value.trim(),
+          }),
+        });
+      } else {
+        res = await fetch(`/api/casos/${casoId}/plazos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tipo_plazo: document.getElementById('ev-detalle').value.trim(),
+            fecha_vencimiento_calculada: fecha,
+          }),
+        });
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar');
+
+      document.getElementById('form-evento').reset();
+      document.getElementById('form-evento').classList.add('hidden');
+      cargarDia();
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.style.display = 'block';
+    }
+  });
+
+  cargarDia();
+  cargarCasos();
+</script>
+</body>
+</html>

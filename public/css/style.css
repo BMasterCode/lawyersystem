@@ -72,7 +72,8 @@ a{color:inherit;}
 .search::before{content:"⌕";position:absolute;left:11px;top:7px;color:var(--muted);}
 
 .top-right{display:flex;align-items:center;gap:16px;}
-.badge-alert{background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;}
+.bell-wrap{font-size:18px;position:relative;}
+.badge-alert{background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;position:absolute;top:-6px;right:-8px;}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
 
 .content{padding:26px 30px;flex:1;max-width:1200px;}
@@ -170,6 +171,57 @@ tr:hover td{background:var(--paper);}
 
 .banner{background:var(--navy-2);color:#fff;border-radius:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;font-size:13px;gap:10px;flex-wrap:wrap;}
 .banner b{color:var(--gold-light);}
+
+/* ---------- calendario de agenda ---------- */
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.cal-header h2{font-size:18px;margin:0;text-transform:capitalize;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.cal-dow{font-size:11px;color:var(--muted);text-align:center;padding:4px 0;text-transform:uppercase;font-weight:600;}
+.cal-cell{background:#fff;border:1px solid var(--line);border-radius:8px;min-height:74px;padding:6px;font-size:12px;cursor:pointer;transition:border-color .15s;}
+.cal-cell:hover{border-color:var(--gold);}
+.cal-cell.empty{background:transparent;border:none;cursor:default;}
+.cal-cell.today{border:2px solid var(--gold);}
+.cal-cell.selected{background:var(--paper);border-color:var(--navy);}
+.cal-cell .d{font-weight:600;color:var(--muted);}
+.cal-dot-row{display:flex;gap:3px;margin-top:6px;flex-wrap:wrap;}
+.cal-dot{width:7px;height:7px;border-radius:50%;}
+.cal-dot.audiencia{background:var(--red);}
+.cal-dot.plazo{background:var(--amber);}
+@media (max-width:640px){ .cal-cell{min-height:52px;font-size:10px;} }
+
+/* ---------- utilidades generales ---------- */
+.text-muted{color:var(--muted);}
+.text-sm{font-size:13px;}
+.text-xs{font-size:11px;}
+.mt-8{margin-top:8px;}
+.mt-12{margin-top:12px;}
+.w-full{width:100%;}
+.flex-between{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.flex-row{display:flex;align-items:center;gap:8px;}
+
+/* ---------- recordatorios del dashboard ---------- */
+.reminders-list{display:flex;flex-direction:column;gap:10px;}
+.reminder-card{display:flex;gap:12px;align-items:flex-start;background:var(--paper);border-radius:10px;padding:14px 16px;border-left:3px solid var(--amber);}
+.reminder-card.today{border-left-color:var(--red);background:#fbf1f1;}
+.reminder-date{font-weight:700;font-size:13px;color:var(--navy);white-space:nowrap;}
+.reminder-title{font-size:13px;margin-top:2px;}
+.reminder-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.reminder-code{font-size:11px;color:var(--muted);flex-shrink:0;margin-left:auto;}
+.dot-red{background:var(--red);}
+.dot-amber{background:var(--amber);}
+
+/* ---------- vista de horario del día (dia.html) ---------- */
+.day-timeline{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;}
+.day-hour-row{display:grid;grid-template-columns:64px 1fr;border-bottom:1px solid var(--paper-2);min-height:52px;}
+.day-hour-row:last-child{border-bottom:none;}
+.day-hour-label{font-size:11px;color:var(--muted);padding:8px;text-align:right;border-right:1px solid var(--paper-2);}
+.day-hour-content{padding:6px 10px;display:flex;flex-direction:column;gap:4px;justify-content:center;}
+.day-event{background:var(--navy);color:#fff;border-radius:6px;padding:5px 10px;font-size:12px;}
+.day-event.plazo{background:var(--amber);}
+@media (max-width:640px){
+  .day-hour-row{grid-template-columns:48px 1fr;}
+  .day-hour-label{font-size:10px;padding:6px;}
+}
 
 @media (max-width: 720px){
   .kpi-row{grid-template-columns:repeat(2,1fr);}

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Agenda y plazos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+      </div>
+      <div class="top-right"><div class="avatar" id="avatar">--</div></div>
+    </div>
+
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Agenda y plazos</h1><p>Audiencias y vencimientos de todos los casos — tocá un día para agendar</p></div>
+      </div>
+
+      <div class="card">
+        <div class="cal-header">
+          <button class="btn ghost" id="btn-mes-anterior">← Anterior</button>
+          <h2 id="titulo-mes"></h2>
+          <button class="btn ghost" id="btn-mes-siguiente">Siguiente →</button>
+        </div>
+        <div class="cal-grid" id="cal-dow"></div>
+        <div class="cal-grid mt-8" id="cal-grid"></div>
+        <p class="text-xs text-muted mt-12">
+          <span class="cal-dot audiencia flex-row" style="display:inline-block;"></span> Audiencia
+          &nbsp;&nbsp;
+          <span class="cal-dot plazo" style="display:inline-block;"></span> Plazo
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script>
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+  const hoy = new Date();
+  let año = hoy.getFullYear();
+  let mes = hoy.getMonth() + 1; // 1-12
+  let eventosDelMes = { audiencias: [], plazos: [] };
+
+  document.getElementById('cal-dow').innerHTML = DIAS.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  async function cargarMes() {
+    document.getElementById('titulo-mes').textContent = `${MESES[mes - 1]} ${año}`;
+    const res = await fetch(`/api/agenda?year=${año}&month=${mes}`);
+    eventosDelMes = res.ok ? await res.json() : { audiencias: [], plazos: [] };
+    renderCalendario();
+  }
+
+  function eventosDeUnDia(fechaStr) {
+    const audiencias = eventosDelMes.audiencias.filter(a => a.fecha_hora.slice(0, 10) === fechaStr);
+    const plazos = eventosDelMes.plazos.filter(p => p.fecha_vencimiento_calculada.slice(0, 10) === fechaStr);
+    return { audiencias, plazos };
+  }
+
+  function renderCalendario() {
+    const grid = document.getElementById('cal-grid');
+    const primerDiaSemana = new Date(año, mes - 1, 1).getDay();
+    const diasEnMes = new Date(año, mes, 0).getDate();
+    const hoyStr = hoy.toISOString().slice(0, 10);
+
+    let celdas = '';
+    for (let i = 0; i < primerDiaSemana; i++) celdas += '<div class="cal-cell empty"></div>';
+
+    for (let d = 1; d <= diasEnMes; d++) {
+      const fechaStr = `${año}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const { audiencias, plazos } = eventosDeUnDia(fechaStr);
+      const clases = ['cal-cell'];
+      if (fechaStr === hoyStr) clases.push('today');
+
+      celdas += `
+        <div class="${clases.join(' ')}" onclick="location.href='/dia.html?fecha=${fechaStr}'">
+          <div class="d">${d}</div>
+          <div class="cal-dot-row">
+            ${audiencias.map(() => '<span class="cal-dot audiencia"></span>').join('')}
+            ${plazos.map(() => '<span class="cal-dot plazo"></span>').join('')}
+          </div>
+        </div>`;
+    }
+    grid.innerHTML = celdas;
+  }
+
+  document.getElementById('btn-mes-anterior').addEventListener('click', () => {
+    mes--; if (mes < 1) { mes = 12; año--; }
+    cargarMes();
+  });
+  document.getElementById('btn-mes-siguiente').addEventListener('click', () => {
+    mes++; if (mes > 12) { mes = 1; año++; }
+    cargarMes();
+  });
+
+  cargarMes();
+</script>
+</body>
+</html>

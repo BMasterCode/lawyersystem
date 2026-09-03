@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Facturación</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+      </div>
+      <div class="top-right"><div class="avatar" id="avatar">--</div></div>
+    </div>
+
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Facturación</h1><p>Cuánto ganó y cuánto le falta cobrar a cada abogado</p></div>
+        <button class="btn gold" id="btn-nuevo-honorario">+ Registrar honorario</button>
+      </div>
+
+      <div class="card" style="padding:0;margin-bottom:18px;">
+        <table>
+          <thead><tr><th>Abogado</th><th>Ganado (cobrado)</th><th>Pendiente por cobrar</th></tr></thead>
+          <tbody id="tabla-resumen"><tr><td colspan="3">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+
+      <form id="form-honorario" class="card hidden" style="margin-bottom:18px;">
+        <h3>Registrar honorario</h3>
+        <div class="error-msg" id="error-honorario"></div>
+        <div class="field">
+          <label>Caso</label>
+          <select id="h-caso" required></select>
+        </div>
+        <div class="field"><label>Concepto</label><input type="text" id="h-concepto" required placeholder="Honorario por patrocinio"></div>
+        <div class="field"><label>Monto</label><input type="number" step="0.01" id="h-monto" required></div>
+        <div class="field">
+          <label>Moneda</label>
+          <select id="h-moneda"><option value="BOB">BOB</option><option value="USD">USD</option></select>
+        </div>
+        <div class="field">
+          <label>Estado de pago</label>
+          <select id="h-estado">
+            <option value="pendiente">Pendiente</option>
+            <option value="parcial">Parcial</option>
+            <option value="pagado">Pagado</option>
+          </select>
+        </div>
+        <button class="btn gold" type="submit">Guardar</button>
+      </form>
+
+      <div class="card" style="padding:0;">
+        <h3 style="padding:18px 20px 0;">Detalle de honorarios</h3>
+        <table>
+          <thead><tr><th>Expediente</th><th>Abogado</th><th>Concepto</th><th>Monto</th><th>Estado</th><th>Fecha</th></tr></thead>
+          <tbody id="tabla-honorarios"><tr><td colspan="6">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script>
+  async function cargarResumen() {
+    const res = await fetch('/api/facturacion/resumen');
+    const tbody = document.getElementById('tabla-resumen');
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="3">No se pudo cargar</td></tr>'; return; }
+    const resumen = await res.json();
+    tbody.innerHTML = resumen.map(r => `
+      <tr>
+        <td>${r.nombre}</td>
+        <td style="color:var(--green);font-weight:600;">Bs ${Number(r.ganado).toLocaleString('es-BO')}</td>
+        <td style="color:var(--amber);font-weight:600;">Bs ${Number(r.pendiente).toLocaleString('es-BO')}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function cargarHonorarios() {
+    const res = await fetch('/api/facturacion/honorarios');
+    const tbody = document.getElementById('tabla-honorarios');
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="6">No se pudo cargar</td></tr>'; return; }
+    const honorarios = await res.json();
+    if (honorarios.length === 0) { tbody.innerHTML = '<tr><td colspan="6">Sin honorarios registrados</td></tr>'; return; }
+
+    tbody.innerHTML = honorarios.map(h => `
+      <tr>
+        <td>${h.numero_expediente}</td>
+        <td>${h.abogado}</td>
+        <td>${h.concepto}</td>
+        <td>${h.moneda} ${Number(h.monto).toLocaleString('es-BO')}</td>
+        <td><span class="tag ${h.estado_pago === 'pagado' ? 'plazo-ok' : h.estado_pago === 'parcial' ? 'plazo-proximo' : 'plazo-urgente'}">${h.estado_pago}</span></td>
+        <td>${new Date(h.fecha).toLocaleDateString('es-BO')}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function cargarCasosParaSelect() {
+    const res = await fetch('/api/casos');
+    if (!res.ok) return;
+    const casos = await res.json();
+    document.getElementById('h-caso').innerHTML = casos
+      .map(c => `<option value="${c.id}">${c.numero_expediente} — ${c.cliente || 'sin cliente'}</option>`)
+      .join('');
+  }
+
+  document.getElementById('btn-nuevo-honorario').addEventListener('click', () => {
+    document.getElementById('form-honorario').classList.toggle('hidden');
+  });
+
+  document.getElementById('form-honorario').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorMsg = document.getElementById('error-honorario');
+    errorMsg.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/facturacion/honorarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caso_id: document.getElementById('h-caso').value,
+          concepto: document.getElementById('h-concepto').value.trim(),
+          monto: document.getElementById('h-monto').value,
+          moneda: document.getElementById('h-moneda').value,
+          estado_pago: document.getElementById('h-estado').value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar');
+
+      document.getElementById('form-honorario').reset();
+      document.getElementById('form-honorario').classList.add('hidden');
+      cargarResumen();
+      cargarHonorarios();
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.style.display = 'block';
+    }
+  });
+
+  cargarResumen();
+  cargarHonorarios();
+  cargarCasosParaSelect();
+</script>
+</body>
+</html>

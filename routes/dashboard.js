@@ -32,4 +32,28 @@ router.get('/kpis', requireTipoCuenta('staff'), async (req, res) => {
   }
 });
 
+// GET /api/dashboard/audiencias-proximas -> las próximas audiencias en
+// orden cronológico (no solo las de hoy), con el nombre del cliente,
+// para mostrarlas como recordatorios en el dashboard
+router.get('/audiencias-proximas', requireTipoCuenta('staff'), async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT a.id, a.fecha_hora, a.tipo_audiencia, a.juzgado_sala,
+             c.id AS caso_id, c.numero_expediente,
+             (SELECT string_agg(cl.nombre_razon_social, ', ')
+              FROM caso_cliente cc JOIN cliente cl ON cl.id = cc.cliente_id
+              WHERE cc.caso_id = c.id) AS cliente
+      FROM audiencia a
+      JOIN caso c ON c.id = a.caso_id
+      WHERE a.fecha_hora >= NOW() AND a.estado = 'programada'
+      ORDER BY a.fecha_hora ASC
+      LIMIT 8
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener las próximas audiencias' });
+  }
+});
+
 module.exports = router;

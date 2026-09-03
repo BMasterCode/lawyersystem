@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Clientes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger" aria-label="Abrir menú"><span></span><span></span><span></span></button>
+      </div>
+      <div class="top-right"><div class="avatar" id="avatar">--</div></div>
+    </div>
+
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Clientes</h1><p id="contador-clientes">Cargando…</p></div>
+      </div>
+
+      <div class="card" style="padding:0;margin-bottom:18px;">
+        <table>
+          <thead>
+            <tr><th>Nombre</th><th>CI / NIT</th><th>Teléfono</th><th>Casos</th><th>Urgencia</th></tr>
+          </thead>
+          <tbody id="tabla-clientes"><tr><td colspan="5">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+
+      <!-- Detalle del cliente seleccionado -->
+      <div class="card hidden" id="card-detalle">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <h3 id="detalle-nombre" style="font-size:18px;"></h3>
+          <button class="btn ghost" onclick="cerrarDetalle()" style="padding:5px 10px;font-size:12px;">Cerrar ✕</button>
+        </div>
+
+        <div class="info-grid" style="margin-bottom:16px;">
+          <div class="info-field"><div class="k">CI / NIT</div><div class="v" id="detalle-ci"></div></div>
+          <div class="info-field"><div class="k">Teléfono</div><div class="v" id="detalle-telefono"></div></div>
+          <div class="info-field"><div class="k">Correo</div><div class="v" id="detalle-email"></div></div>
+          <div class="info-field"><div class="k">Código de acceso</div><div class="v mono" id="detalle-codigo"></div></div>
+        </div>
+
+        <h3>Sus casos</h3>
+        <table style="margin-bottom:16px;">
+          <thead><tr><th>Expediente</th><th>Materia</th><th>Próximo plazo</th><th>Urgencia</th></tr></thead>
+          <tbody id="detalle-casos"></tbody>
+        </table>
+
+        <div style="display:flex;gap:10px;">
+          <button class="btn ghost" id="btn-editar">Editar datos</button>
+          <button class="btn ghost" id="btn-eliminar" style="color:var(--red);">Eliminar cliente</button>
+        </div>
+
+        <!-- Formulario de edición -->
+        <form id="form-editar" class="hidden" style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px;">
+          <div class="error-msg" id="error-editar"></div>
+          <div class="field"><label>Nombre</label><input type="text" id="edit-nombre" required></div>
+          <div class="field"><label>CI / NIT</label><input type="text" id="edit-ci"></div>
+          <div class="field"><label>Teléfono</label><input type="tel" id="edit-telefono"></div>
+          <div class="field"><label>Correo</label><input type="email" id="edit-email"></div>
+          <button class="btn gold" type="submit">Guardar cambios</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/sidebar.js"></script>
+<script>
+  let clienteActualId = null;
+
+  async function cargarClientes() {
+    const res = await fetch('/api/clientes');
+    const tbody = document.getElementById('tabla-clientes');
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="5">No se pudo cargar</td></tr>'; return; }
+    const clientes = await res.json();
+    document.getElementById('contador-clientes').textContent = `${clientes.length} clientes`;
+    if (clientes.length === 0) { tbody.innerHTML = '<tr><td colspan="5">Sin clientes registrados</td></tr>'; return; }
+
+    tbody.innerHTML = clientes.map(c => `
+      <tr>
+        <td class="row-link" onclick="verDetalle(${c.id})">${c.nombre_razon_social}</td>
+        <td>${c.ci_nit || '— (sin completar)'}</td>
+        <td>${c.telefono || '—'}</td>
+        <td>${c.num_casos}</td>
+        <td>${c.tiene_urgente ? '<span class="tag plazo-urgente">Urgente</span>' : '<span class="tag plazo-ok">Al día</span>'}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function verDetalle(id) {
+    clienteActualId = id;
+    const res = await fetch(`/api/clientes/${id}`);
+    if (!res.ok) return alert('No se pudo cargar el cliente');
+    const { cliente, casos } = await res.json();
+
+    document.getElementById('card-detalle').classList.remove('hidden');
+    document.getElementById('form-editar').classList.add('hidden');
+    document.getElementById('detalle-nombre').textContent = cliente.nombre_razon_social;
+    document.getElementById('detalle-ci').textContent = cliente.ci_nit || 'Sin completar (todavía no entró con su código)';
+    document.getElementById('detalle-telefono').textContent = cliente.telefono || '—';
+    document.getElementById('detalle-email').textContent = cliente.email || '—';
+    document.getElementById('detalle-codigo').textContent = cliente.codigo_acceso;
+
+    document.getElementById('detalle-casos').innerHTML = casos.length
+      ? casos.map(c => `
+        <tr>
+          <td class="row-link" onclick="location.href='/detalle.html?id=${c.id}'">${c.numero_expediente}</td>
+          <td><span class="tag mat">${c.materia}</span></td>
+          <td>${c.proximo_plazo ? new Date(c.proximo_plazo).toLocaleDateString('es-BO') : '—'}</td>
+          <td>${c.urgencia === 'urgente' ? '<span class="tag plazo-urgente">Urgente</span>' : c.urgencia === 'proximo' ? '<span class="tag plazo-proximo">Próximo</span>' : '<span class="tag plazo-ok">Al día</span>'}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="4">Sin casos</td></tr>';
+
+    document.getElementById('edit-nombre').value = cliente.nombre_razon_social;
+    document.getElementById('edit-ci').value = cliente.ci_nit || '';
+    document.getElementById('edit-telefono').value = cliente.telefono || '';
+    document.getElementById('edit-email').value = cliente.email || '';
+
+    document.getElementById('card-detalle').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function cerrarDetalle() {
+    document.getElementById('card-detalle').classList.add('hidden');
+    clienteActualId = null;
+  }
+
+  document.getElementById('btn-editar').addEventListener('click', () => {
+    document.getElementById('form-editar').classList.toggle('hidden');
+  });
+
+  document.getElementById('form-editar').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorMsg = document.getElementById('error-editar');
+    errorMsg.style.display = 'none';
+
+    try {
+      const res = await fetch(`/api/clientes/${clienteActualId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre_razon_social: document.getElementById('edit-nombre').value.trim(),
+          ci_nit: document.getElementById('edit-ci').value.trim(),
+          telefono: document.getElementById('edit-telefono').value.trim(),
+          email: document.getElementById('edit-email').value.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo actualizar');
+      await cargarClientes();
+      verDetalle(clienteActualId);
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.style.display = 'block';
+    }
+  });
+
+  document.getElementById('btn-eliminar').addEventListener('click', async () => {
+    if (!confirm('Esto elimina al cliente (los casos quedan, pero se desvinculan de él). ¿Confirmás?')) return;
+    const res = await fetch(`/api/clientes/${clienteActualId}`, { method: 'DELETE' });
+    if (res.ok) {
+      cerrarDetalle();
+      cargarClientes();
+    } else {
+      alert('No se pudo eliminar el cliente');
+    }
+  });
+
+  cargarClientes();
+</script>
+</body>
+</html>

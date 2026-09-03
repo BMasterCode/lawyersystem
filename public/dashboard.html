@@ -14,15 +14,15 @@
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
   <nav class="sidebar" id="sidebar"><!-- lo llena sidebar.js según el rol --></nav>
 
-  <div class="main" style="margin-left:0;">
+  <div class="main">
     <div class="topbar">
       <div class="topbar-left">
         <button class="hamburger" id="hamburger" aria-label="Abrir menú"><span></span><span></span><span></span></button>
         <div class="search"><input placeholder="Buscar por cliente, Nº de expediente, CI/NIT…"></div>
       </div>
       <div class="top-right">
-        <div class="mono" style="font-size:12px;color:var(--muted)" id="today-date"></div>
-        <div style="font-size:18px;position:relative;">🔔<span class="badge-alert" id="alert-count" style="position:absolute;top:-6px;right:-8px;">0</span></div>
+        <div class="mono text-xs text-muted" id="today-date"></div>
+        <div class="bell-wrap">🔔<span class="badge-alert" id="alert-count">0</span></div>
         <div class="avatar" id="avatar">--</div>
       </div>
     </div>
@@ -40,16 +40,23 @@
         <div class="kpi"><div class="num" id="kpi-honorarios">—</div><div class="lbl">Honorarios por cobrar</div></div>
       </div>
 
-      <div class="card">
-        <h3>Próximos vencimientos</h3>
-        <table>
-          <thead>
-            <tr><th>Expediente</th><th>Cliente</th><th>Materia</th><th>Tipo de plazo</th><th>Vence</th><th>Estado</th></tr>
-          </thead>
-          <tbody id="tabla-plazos">
-            <tr><td colspan="6">Cargando…</td></tr>
-          </tbody>
-        </table>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Próximos vencimientos</h3>
+          <table>
+            <thead>
+              <tr><th>Expediente</th><th>Cliente</th><th>Materia</th><th>Tipo de plazo</th><th>Vence</th><th>Estado</th></tr>
+            </thead>
+            <tbody id="tabla-plazos">
+              <tr><td colspan="6">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>Próximas audiencias</h3>
+          <div id="lista-audiencias-proximas"><p class="text-sm text-muted">Cargando…</p></div>
+        </div>
       </div>
     </div>
   </div>
@@ -74,6 +81,35 @@
     document.getElementById('alert-count').textContent = k.plazos_proximos + k.audiencias_hoy;
   }
 
+  async function cargarAudienciasProximas() {
+    const res = await fetch('/api/dashboard/audiencias-proximas');
+    const cont = document.getElementById('lista-audiencias-proximas');
+    if (!res.ok) { cont.innerHTML = '<p class="text-sm text-muted">No se pudo cargar</p>'; return; }
+    const audiencias = await res.json();
+    if (audiencias.length === 0) {
+      cont.innerHTML = '<p class="text-sm text-muted">No hay audiencias programadas próximamente.</p>';
+      return;
+    }
+    const hoy = new Date().toDateString();
+    cont.innerHTML = '<div class="reminders-list">' + audiencias.map(a => {
+      const fecha = new Date(a.fecha_hora);
+      const esHoy = fecha.toDateString() === hoy;
+      const fechaTexto = esHoy
+        ? 'Hoy'
+        : fecha.toLocaleDateString('es-BO', { weekday: 'short', day: 'numeric', month: 'short' });
+      const hora = fecha.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
+      return `
+        <div class="reminder-card ${esHoy ? 'today' : ''}">
+          <div>
+            <div class="reminder-date">${fechaTexto}, ${hora}</div>
+            <div class="reminder-title">${a.tipo_audiencia}</div>
+            <div class="reminder-meta">${a.cliente || 'Sin cliente vinculado'} · ${a.juzgado_sala || 'Sin sala asignada'}</div>
+          </div>
+          <span class="reminder-code mono">${a.numero_expediente}</span>
+        </div>`;
+    }).join('') + '</div>';
+  }
+
   async function cargarCasosConPlazos() {
     const res = await fetch('/api/casos');
     const tbody = document.getElementById('tabla-plazos');
@@ -95,6 +131,7 @@
 
   cargarKpis();
   cargarCasosConPlazos();
+  cargarAudienciasProximas();
 </script>
 </body>
 </html>

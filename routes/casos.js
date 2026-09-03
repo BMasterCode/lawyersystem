@@ -197,7 +197,7 @@ router.post('/:id/plazos', requireTipoCuenta('staff'), async (req, res) => {
 // POST /api/casos/:id/audiencias -> agregar una audiencia (solo staff)
 router.post('/:id/audiencias', requireTipoCuenta('staff'), async (req, res) => {
   const { id } = req.params;
-  const { fecha_hora, tipo_audiencia, juzgado_sala, estado } = req.body;
+  const { fecha_hora, hora_fin, tipo_audiencia, juzgado_sala, estado } = req.body;
 
   if (!fecha_hora || !tipo_audiencia) {
     return res.status(400).json({ error: 'Faltan datos obligatorios' });
@@ -205,9 +205,9 @@ router.post('/:id/audiencias', requireTipoCuenta('staff'), async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `INSERT INTO audiencia (caso_id, fecha_hora, tipo_audiencia, juzgado_sala, estado)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [id, fecha_hora, tipo_audiencia, juzgado_sala || null, estado || 'programada']
+      `INSERT INTO audiencia (caso_id, fecha_hora, hora_fin, tipo_audiencia, juzgado_sala, estado)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [id, fecha_hora, hora_fin || null, tipo_audiencia, juzgado_sala || null, estado || 'programada']
     );
     res.status(201).json(rows[0]);
   } catch (err) {
