@@ -47,10 +47,10 @@
               <h3 style="margin:0;">Plazos</h3>
               <button class="btn ghost hidden" id="btn-add-plazo" style="padding:5px 10px;font-size:12px;">+ Agregar plazo</button>
             </div>
-            <table>
+            <div class="table-scroll"><div class="table-scroll"><table>
               <thead><tr><th>Tipo</th><th>Vence</th><th>Estado</th></tr></thead>
               <tbody id="tabla-plazos"><tr><td colspan="3">Sin plazos registrados</td></tr></tbody>
-            </table>
+            </table></div></div>
 
             <form id="form-plazo" class="hidden" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px;">
               <div class="error-msg" id="error-plazo"></div>
@@ -78,10 +78,10 @@
               <h3 style="margin:0;">Audiencias</h3>
               <button class="btn ghost hidden" id="btn-add-audiencia" style="padding:5px 10px;font-size:12px;">+ Agregar audiencia</button>
             </div>
-            <table>
+            <div class="table-scroll"><div class="table-scroll"><table>
               <thead><tr><th>Fecha</th><th>Tipo</th><th>Lugar</th><th>Estado</th></tr></thead>
               <tbody id="tabla-audiencias"><tr><td colspan="4">Sin audiencias registradas</td></tr></tbody>
-            </table>
+            </table></div></div>
 
             <form id="form-audiencia" class="hidden" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px;">
               <div class="error-msg" id="error-audiencia"></div>
@@ -153,7 +153,7 @@
       document.getElementById('titulo-caso').textContent = 'No se pudo cargar el caso';
       return;
     }
-    const { caso, plazos, audiencias, documentos, clientes } = await res.json();
+    const { caso, plazos, audiencias, documentos, clientes, esPremium } = await res.json();
 
     document.getElementById('titulo-caso').textContent =
       `${caso.numero_expediente} ${caso.contraparte ? '— c/ ' + caso.contraparte : ''}`;
@@ -193,7 +193,7 @@
         </tr>`).join('')
       : '<tr><td colspan="4">Sin audiencias registradas</td></tr>';
 
-    renderDocumentos(documentos);
+    renderDocumentos(documentos, esPremium);
 
     if (esStaff) {
       document.getElementById('btn-add-plazo').classList.remove('hidden');
@@ -211,10 +211,17 @@
     }
   }
 
-  function renderDocumentos(documentos) {
+  function renderDocumentos(documentos, esPremium) {
     const cont = document.getElementById('lista-documentos');
+    if (!esStaff && esPremium === false) {
+      cont.innerHTML = `
+        <p class="text-sm text-muted">
+          Con el plan Premium podés ver y buscar en los documentos de tu caso.
+        </p>`;
+      return;
+    }
     if (documentos.length === 0) {
-      cont.innerHTML = '<p style="font-size:13px;color:var(--muted);">Todavía no hay documentos.</p>';
+      cont.innerHTML = '<p class="text-sm text-muted">Todavía no hay documentos.</p>';
       return;
     }
     cont.innerHTML = documentos.map(d => `

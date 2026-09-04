@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LexSystem — Iniciar sesión</title>
+<title>LexSystem — Administración</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -11,18 +11,15 @@
 <body>
   <div class="login-shell">
     <div class="login-card">
-      <a href="/entrada.html" style="font-size:12px;color:var(--muted);text-decoration:none;">← Volver</a>
       <h1>Lex<span style="color:var(--gold)">System</span></h1>
-      <p>Ingresá con tu cuenta de abogado / equipo del estudio.</p>
+      <p>Panel de administración.</p>
 
       <form id="login-form">
         <div class="error-msg" id="error-msg"></div>
-
         <div class="field">
-          <label>CI (usuario)</label>
-          <input type="text" id="ci" required autocomplete="username">
+          <label>Usuario</label>
+          <input type="text" id="usuario" required autocomplete="username">
         </div>
-
         <div class="field">
           <label>Contraseña</label>
           <div class="pw-wrap">
@@ -30,8 +27,7 @@
             <button type="button" class="pw-toggle" data-target="password">👁</button>
           </div>
         </div>
-
-        <button class="btn gold" type="submit" style="width:100%;" id="submit-btn">Ingresar</button>
+        <button class="btn gold w-full" type="submit" id="submit-btn">Ingresar</button>
       </form>
     </div>
   </div>
@@ -54,16 +50,14 @@
       submitBtn.disabled = true;
       submitBtn.textContent = 'Ingresando…';
 
-      const body = {
-        ci: document.getElementById('ci').value.trim(),
-        password: document.getElementById('password').value,
-      };
-
       try {
-        const res = await fetch('/auth/login', {
+        const res = await fetch('/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            usuario: document.getElementById('usuario').value.trim(),
+            password: document.getElementById('password').value,
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');

@@ -37,46 +37,8 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// POST /auth/registro -> crear cuenta de abogado
-// { nombre, ci, email, telefono, rol, password }
-router.post('/registro', async (req, res) => {
-  const { nombre, ci, email, telefono, rol, password } = req.body;
-
-  if (!nombre || !ci || !email || !password || !rol) {
-    return res.status(400).json({ error: 'Faltan datos obligatorios' });
-  }
-
-  try {
-    const existeCi = await pool.query('SELECT id FROM usuario WHERE ci = $1', [ci]);
-    if (existeCi.rowCount > 0) {
-      return res.status(409).json({ error: 'Ya existe una cuenta con ese CI' });
-    }
-    const existeEmail = await pool.query('SELECT id FROM usuario WHERE email = $1', [email]);
-    if (existeEmail.rowCount > 0) {
-      return res.status(409).json({ error: 'Ya existe una cuenta con ese correo' });
-    }
-
-    const password_hash = await bcrypt.hash(password, 10);
-    const { rows } = await pool.query(
-      `INSERT INTO usuario (nombre, ci, email, telefono, password_hash, rol)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, nombre, ci, email, rol`,
-      [nombre, ci, email, telefono || null, password_hash, rol]
-    );
-
-    req.session.user = {
-      id: rows[0].id,
-      nombre: rows[0].nombre,
-      ci: rows[0].ci,
-      email: rows[0].email,
-      rol: rows[0].rol,
-      tipoCuenta: 'staff',
-    };
-    res.status(201).json({ redirect: '/dashboard.html' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al crear la cuenta' });
-  }
-});
+// El autoregistro de abogados se sacó: ahora solo el administrador puede
+// dar de alta abogados, desde /admin-panel.html (ver routes/adminApi.js)
 
 // ============ CLIENTE (sin contraseña: CI + código) ============
 

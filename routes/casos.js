@@ -48,6 +48,7 @@ router.get('/:id', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'No autenticado' });
 
   try {
+    let esPremium = false;
     if (user.tipoCuenta === 'cliente') {
       const vinculo = await pool.query(
         'SELECT 1 FROM caso_cliente WHERE caso_id = $1 AND cliente_id = $2',
@@ -56,6 +57,8 @@ router.get('/:id', async (req, res) => {
       if (vinculo.rowCount === 0) {
         return res.status(403).json({ error: 'No tenes acceso a este caso' });
       }
+      const clienteInfo = await pool.query('SELECT plan FROM cliente WHERE id = $1', [user.id]);
+      esPremium = clienteInfo.rows[0]?.plan === 'premium';
     }
 
     const caso = await pool.query('SELECT * FROM caso WHERE id = $1', [id]);
@@ -69,12 +72,19 @@ router.get('/:id', async (req, res) => {
       'SELECT * FROM audiencia WHERE caso_id = $1 ORDER BY fecha_hora',
       [id]
     );
-    // El portal del cliente solo debe ver documentos marcados visible_en_portal
-    const documentosQuery =
-      user.tipoCuenta === 'cliente'
-        ? 'SELECT id, nombre_archivo, tipo_documento, fecha_subida FROM documento WHERE caso_id = $1 AND visible_en_portal = TRUE ORDER BY fecha_subida DESC'
-        : 'SELECT * FROM documento WHERE caso_id = $1 ORDER BY fecha_subida DESC';
-    const documentos = await pool.query(documentosQuery, [id]);
+
+    // Documentos: el staff ve todo. El cliente premium ve los marcados
+    // visible_en_portal. El cliente normal no ve documentos (solo el
+    // estado del caso) — ese es el beneficio de la suscripción premium.
+    let documentos = { rows: [] };
+    if (user.tipoCuenta === 'staff') {
+      documentos = await pool.query('SELECT * FROM documento WHERE caso_id = $1 ORDER BY fecha_subida DESC', [id]);
+    } else if (esPremium) {
+      documentos = await pool.query(
+        'SELECT id, nombre_archivo, tipo_documento, fecha_subida FROM documento WHERE caso_id = $1 AND visible_en_portal = TRUE ORDER BY fecha_subida DESC',
+        [id]
+      );
+    }
 
     const clientes = await pool.query(
       `SELECT cl.id, cl.nombre_razon_social, cl.codigo_acceso, cc.rol_en_caso
@@ -90,6 +100,7 @@ router.get('/:id', async (req, res) => {
       documentos: documentos.rows,
       // El código de acceso solo se manda si quien pregunta es staff
       clientes: user.tipoCuenta === 'staff' ? clientes.rows : undefined,
+      esPremium: user.tipoCuenta === 'cliente' ? esPremium : undefined,
     });
   } catch (err) {
     console.error(err);

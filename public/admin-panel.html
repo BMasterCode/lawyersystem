@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexSystem — Panel de administración</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand" style="font-size:18px;">Lex<span style="color:var(--gold)">System</span> · Admin</div>
+    </div>
+    <div class="top-right">
+      <a href="#" id="logout-link" class="btn ghost">Cerrar sesión</a>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="page-head">
+      <div><h1>Panel de administración</h1><p>Abogados, clientes y reportes del estudio</p></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="abogados">Abogados</div>
+      <div class="tab" data-tab="clientes">Clientes</div>
+      <div class="tab" data-tab="reportes">Reportes</div>
+    </div>
+
+    <!-- ===== ABOGADOS ===== -->
+    <div class="tab-panel" id="panel-abogados">
+      <div class="flex-between mt-12" style="margin-bottom:14px;">
+        <p class="text-sm text-muted" id="contador-abogados">Cargando…</p>
+        <button class="btn gold" id="btn-nuevo-abogado">+ Nuevo abogado</button>
+      </div>
+
+      <form id="form-abogado" class="card hidden" style="margin-bottom:18px;">
+        <div class="error-msg" id="error-abogado"></div>
+        <div class="field"><label>Nombre y apellidos</label><input type="text" id="ab-nombre" required></div>
+        <div class="field"><label>CI (será su usuario)</label><input type="text" id="ab-ci" required></div>
+        <div class="field"><label>Correo electrónico</label><input type="email" id="ab-email" required></div>
+        <div class="field"><label>Teléfono</label><input type="tel" id="ab-telefono"></div>
+        <div class="field">
+          <label>Rol</label>
+          <select id="ab-rol">
+            <option value="abogado">Abogado</option>
+            <option value="asistente">Asistente</option>
+            <option value="socio">Socio</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Contraseña inicial</label>
+          <div class="pw-wrap">
+            <input type="password" id="ab-password" required minlength="6">
+            <button type="button" class="pw-toggle" data-target="ab-password">👁</button>
+          </div>
+        </div>
+        <button class="btn gold w-full" type="submit">Crear abogado</button>
+      </form>
+
+      <div class="card" style="padding:0;">
+        <div class="table-scroll"><table>
+          <thead><tr><th>Nombre</th><th>CI</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-abogados"><tr><td colspan="6">Cargando…</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ===== CLIENTES ===== -->
+    <div class="tab-panel hidden" id="panel-clientes">
+      <p class="text-sm text-muted mt-12" id="contador-clientes" style="margin-bottom:14px;">Cargando…</p>
+      <div class="card" style="padding:0;">
+        <div class="table-scroll"><table>
+          <thead><tr><th>Nombre</th><th>CI / NIT</th><th>Casos</th><th>Plan</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-clientes-admin"><tr><td colspan="5">Cargando…</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ===== REPORTES ===== -->
+    <div class="tab-panel hidden" id="panel-reportes">
+      <div class="kpi-row mt-12" id="kpis-totales"></div>
+      <div class="card" style="padding:0;margin-top:18px;">
+        <h3 style="padding:18px 20px 0;">Casos por abogado</h3>
+        <div class="table-scroll"><table>
+          <thead><tr><th>Abogado</th><th>Total de casos</th><th>Esta semana</th><th>Este mes</th></tr></thead>
+          <tbody id="tabla-reportes"><tr><td colspan="4">Cargando…</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('logout-link').addEventListener('click', async (e) => {
+    e.preventDefault();
+    await fetch('/auth/logout', { method: 'POST' });
+    window.location.href = '/admin';
+  });
+
+  document.querySelectorAll('.pw-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+  });
+
+  // ----- tabs -----
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      tab.classList.add('active');
+      document.getElementById(`panel-${tab.dataset.tab}`).classList.remove('hidden');
+    });
+  });
+
+  // ----- abogados -----
+  async function cargarAbogados() {
+    const res = await fetch('/api/admin/abogados');
+    const tbody = document.getElementById('tabla-abogados');
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="6">No se pudo cargar</td></tr>'; return; }
+    const abogados = await res.json();
+    document.getElementById('contador-abogados').textContent = `${abogados.length} abogados/staff`;
+
+    tbody.innerHTML = abogados.map(a => `
+      <tr>
+        <td>${a.nombre}</td>
+        <td class="mono">${a.ci}</td>
+        <td>${a.email}</td>
+        <td><span class="tag mat">${a.rol}</span></td>
+        <td><span class="tag ${a.activo ? 'plazo-ok' : 'plazo-urgente'}">${a.activo ? 'Activo' : 'Inactivo'}</span></td>
+        <td><button class="btn ghost" style="padding:5px 10px;font-size:11px;" onclick="toggleAbogado(${a.id}, ${!a.activo})">${a.activo ? 'Desactivar' : 'Activar'}</button></td>
+      </tr>
+    `).join('');
+  }
+
+  async function toggleAbogado(id, nuevoEstado) {
+    const res = await fetch(`/api/admin/abogados/${id}/estado`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activo: nuevoEstado }),
+    });
+    if (res.ok) cargarAbogados();
+  }
+
+  document.getElementById('btn-nuevo-abogado').addEventListener('click', () => {
+    document.getElementById('form-abogado').classList.toggle('hidden');
+  });
+
+  document.getElementById('form-abogado').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorMsg = document.getElementById('error-abogado');
+    errorMsg.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/admin/abogados', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: document.getElementById('ab-nombre').value.trim(),
+          ci: document.getElementById('ab-ci').value.trim(),
+          email: document.getElementById('ab-email').value.trim(),
+          telefono: document.getElementById('ab-telefono').value.trim(),
+          rol: document.getElementById('ab-rol').value,
+          password: document.getElementById('ab-password').value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo crear el abogado');
+
+      document.getElementById('form-abogado').reset();
+      document.getElementById('form-abogado').classList.add('hidden');
+      cargarAbogados();
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.style.display = 'block';
+    }
+  });
+
+  // ----- clientes -----
+  async function cargarClientesAdmin() {
+    const res = await fetch('/api/admin/clientes');
+    const tbody = document.getElementById('tabla-clientes-admin');
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="5">No se pudo cargar</td></tr>'; return; }
+    const clientes = await res.json();
+    document.getElementById('contador-clientes').textContent = `${clientes.length} clientes`;
+
+    tbody.innerHTML = clientes.map(c => `
+      <tr>
+        <td>${c.nombre_razon_social}</td>
+        <td>${c.ci_nit || '— (sin completar)'}</td>
+        <td>${c.num_casos}</td>
+        <td><span class="tag ${c.plan === 'premium' ? 'plazo-ok' : 'mat'}">${c.plan}</span></td>
+        <td><button class="btn ghost" style="padding:5px 10px;font-size:11px;" onclick="cambiarPlan(${c.id}, '${c.plan === 'premium' ? 'normal' : 'premium'}')">
+          ${c.plan === 'premium' ? 'Bajar a normal' : 'Subir a premium'}
+        </button></td>
+      </tr>
+    `).join('');
+  }
+
+  async function cambiarPlan(id, plan) {
+    const res = await fetch(`/api/admin/clientes/${id}/plan`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    });
+    if (res.ok) cargarClientesAdmin();
+  }
+
+  // ----- reportes -----
+  async function cargarReportes() {
+    const res = await fetch('/api/admin/reportes');
+    if (!res.ok) return;
+    const { porAbogado, totales } = await res.json();
+
+    document.getElementById('kpis-totales').innerHTML = `
+      <div class="kpi"><div class="num">${totales.total_casos}</div><div class="lbl">Casos totales</div></div>
+      <div class="kpi"><div class="num">${totales.casos_activos}</div><div class="lbl">Casos activos</div></div>
+      <div class="kpi"><div class="num">${totales.total_clientes}</div><div class="lbl">Clientes</div></div>
+      <div class="kpi warn"><div class="num">${totales.clientes_premium}</div><div class="lbl">Clientes premium</div></div>
+    `;
+
+    document.getElementById('tabla-reportes').innerHTML = porAbogado.map(a => `
+      <tr>
+        <td>${a.nombre}</td>
+        <td>${a.total_casos}</td>
+        <td>${a.casos_esta_semana}</td>
+        <td>${a.casos_este_mes}</td>
+      </tr>
+    `).join('');
+  }
+
+  cargarAbogados();
+  cargarClientesAdmin();
+  cargarReportes();
+</script>
+</body>
+</html>

@@ -28,12 +28,12 @@
       </div>
 
       <div class="card" style="padding:0;margin-bottom:18px;">
-        <table>
+        <div class="table-scroll"><div class="table-scroll"><table>
           <thead>
             <tr><th>Nombre</th><th>CI / NIT</th><th>Teléfono</th><th>Casos</th><th>Urgencia</th></tr>
           </thead>
           <tbody id="tabla-clientes"><tr><td colspan="5">Cargando…</td></tr></tbody>
-        </table>
+        </table></div></div>
       </div>
 
       <!-- Detalle del cliente seleccionado -->
@@ -51,10 +51,10 @@
         </div>
 
         <h3>Sus casos</h3>
-        <table style="margin-bottom:16px;">
+        <div class="table-scroll"><div class="table-scroll"><table style="margin-bottom:16px;">
           <thead><tr><th>Expediente</th><th>Materia</th><th>Próximo plazo</th><th>Urgencia</th></tr></thead>
           <tbody id="detalle-casos"></tbody>
-        </table>
+        </table></div></div>
 
         <div style="display:flex;gap:10px;">
           <button class="btn ghost" id="btn-editar">Editar datos</button>

@@ -100,6 +100,16 @@ a{color:inherit;}
 .card h3{font-size:14px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;}
 
 table{width:100%;border-collapse:collapse;font-size:13px;}
+
+/* Envolvé cada <table> en <div class="table-scroll">...</div>:
+   en vez de achicar/romper columnas en pantallas chicas, la tabla
+   se desliza hacia los costados con el dedo. */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.table-scroll table{min-width:560px;}
+@media (max-width:640px){
+  .table-scroll table{font-size:12px;}
+  .table-scroll th, .table-scroll td{padding:8px 6px;white-space:nowrap;}
+}
 th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:8px 10px;border-bottom:1px solid var(--line);}
 td{padding:10px;border-bottom:1px solid var(--paper-2);}
 tr:hover td{background:var(--paper);}
@@ -222,6 +232,11 @@ tr:hover td{background:var(--paper);}
   .day-hour-row{grid-template-columns:48px 1fr;}
   .day-hour-label{font-size:10px;padding:6px;}
 }
+
+/* ---------- tabs (panel de admin) ---------- */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:4px;overflow-x:auto;}
+.tab{padding:10px 16px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.tab.active{color:var(--navy);border-bottom:2px solid var(--gold);font-weight:600;}
 
 @media (max-width: 720px){
   .kpi-row{grid-template-columns:repeat(2,1fr);}
