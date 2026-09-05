@@ -13,10 +13,13 @@
 <div class="main">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="brand" style="font-size:18px;">Lex<span style="color:var(--gold)">System</span> · Admin</div>
+      <div class="brand" style="font-size:18px;">Lex<span style="color:var(--gold)">System</span></div>
+      <span class="tag mat" style="margin-left:4px;">Admin</span>
     </div>
     <div class="top-right">
+      <div class="mono text-xs text-muted" id="fecha-hoy"></div>
       <a href="#" id="logout-link" class="btn ghost">Cerrar sesión</a>
+      <div class="avatar">AD</div>
     </div>
   </div>
 
@@ -38,7 +41,18 @@
         <button class="btn gold" id="btn-nuevo-abogado">+ Nuevo abogado</button>
       </div>
 
+      <!-- Se muestra una sola vez, justo después de crear o de restablecer una contraseña -->
+      <div class="card hidden" id="reveal-abogado" style="margin-bottom:18px;border-color:var(--gold);">
+        <h3 id="reveal-titulo">Contraseña asignada</h3>
+        <p class="text-sm text-muted" style="margin:0 0 10px;">
+          Pasásela al abogado por un medio seguro. No queda guardada en ningún lado en texto plano — anotala ahora.
+        </p>
+        <div class="mono" id="reveal-valor" style="font-size:20px;font-weight:700;background:var(--paper);padding:12px 16px;border-radius:8px;text-align:center;letter-spacing:1px;"></div>
+        <button class="btn ghost mt-12" id="reveal-copiar">Copiar</button>
+      </div>
+
       <form id="form-abogado" class="card hidden" style="margin-bottom:18px;">
+        <input type="hidden" id="ab-editando-id" value="">
         <div class="error-msg" id="error-abogado"></div>
         <div class="field"><label>Nombre y apellidos</label><input type="text" id="ab-nombre" required></div>
         <div class="field"><label>CI (será su usuario)</label><input type="text" id="ab-ci" required></div>
@@ -52,14 +66,14 @@
             <option value="socio">Socio</option>
           </select>
         </div>
-        <div class="field">
-          <label>Contraseña inicial</label>
+        <div class="field" id="ab-campo-password">
+          <label id="ab-lbl-password">Contraseña inicial</label>
           <div class="pw-wrap">
-            <input type="password" id="ab-password" required minlength="6">
+            <input type="password" id="ab-password" minlength="6">
             <button type="button" class="pw-toggle" data-target="ab-password">👁</button>
           </div>
         </div>
-        <button class="btn gold w-full" type="submit">Crear abogado</button>
+        <button class="btn gold w-full" type="submit" id="ab-submit-btn">Crear abogado</button>
       </form>
 
       <div class="card" style="padding:0;">
@@ -73,10 +87,21 @@
     <!-- ===== CLIENTES ===== -->
     <div class="tab-panel hidden" id="panel-clientes">
       <p class="text-sm text-muted mt-12" id="contador-clientes" style="margin-bottom:14px;">Cargando…</p>
+
+      <form id="form-cliente" class="card hidden" style="margin-bottom:18px;">
+        <input type="hidden" id="cl-editando-id" value="">
+        <div class="error-msg" id="error-cliente"></div>
+        <div class="field"><label>Nombre</label><input type="text" id="cl-nombre" required></div>
+        <div class="field"><label>CI / NIT</label><input type="text" id="cl-ci"></div>
+        <div class="field"><label>Teléfono</label><input type="tel" id="cl-telefono"></div>
+        <div class="field"><label>Correo</label><input type="email" id="cl-email"></div>
+        <button class="btn gold w-full" type="submit">Guardar cambios</button>
+      </form>
+
       <div class="card" style="padding:0;">
         <div class="table-scroll"><table>
-          <thead><tr><th>Nombre</th><th>CI / NIT</th><th>Casos</th><th>Plan</th><th>Acciones</th></tr></thead>
-          <tbody id="tabla-clientes-admin"><tr><td colspan="5">Cargando…</td></tr></tbody>
+          <thead><tr><th>Nombre</th><th>CI / NIT</th><th>Código</th><th>Casos</th><th>Plan</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-clientes-admin"><tr><td colspan="6">Cargando…</td></tr></tbody>
         </table></div>
       </div>
     </div>
@@ -96,6 +121,9 @@
 </div>
 
 <script>
+  document.getElementById('fecha-hoy').textContent =
+    new Date().toLocaleDateString('es-BO', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+
   document.getElementById('logout-link').addEventListener('click', async (e) => {
     e.preventDefault();
     await fetch('/auth/logout', { method: 'POST' });
@@ -109,6 +137,13 @@
     });
   });
 
+  function mostrarReveal(titulo, valor) {
+    document.getElementById('reveal-titulo').textContent = titulo;
+    document.getElementById('reveal-valor').textContent = valor;
+    document.getElementById('reveal-abogado').classList.remove('hidden');
+    document.getElementById('reveal-copiar').onclick = () => navigator.clipboard.writeText(valor);
+  }
+
   // ----- tabs -----
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.addEventListener('click', () => {
@@ -116,10 +151,11 @@
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
       tab.classList.add('active');
       document.getElementById(`panel-${tab.dataset.tab}`).classList.remove('hidden');
+      document.getElementById('reveal-abogado').classList.add('hidden');
     });
   });
 
-  // ----- abogados -----
+  // ===================== ABOGADOS =====================
   async function cargarAbogados() {
     const res = await fetch('/api/admin/abogados');
     const tbody = document.getElementById('tabla-abogados');
@@ -134,7 +170,12 @@
         <td>${a.email}</td>
         <td><span class="tag mat">${a.rol}</span></td>
         <td><span class="tag ${a.activo ? 'plazo-ok' : 'plazo-urgente'}">${a.activo ? 'Activo' : 'Inactivo'}</span></td>
-        <td><button class="btn ghost" style="padding:5px 10px;font-size:11px;" onclick="toggleAbogado(${a.id}, ${!a.activo})">${a.activo ? 'Desactivar' : 'Activar'}</button></td>
+        <td style="white-space:nowrap;">
+          <button class="btn ghost" style="padding:5px 8px;font-size:11px;" onclick='editarAbogado(${JSON.stringify(a)})'>Editar</button>
+          <button class="btn ghost" style="padding:5px 8px;font-size:11px;" onclick="restablecerPassword(${a.id})">Contraseña</button>
+          <button class="btn ghost" style="padding:5px 8px;font-size:11px;" onclick="toggleAbogado(${a.id}, ${!a.activo})">${a.activo ? 'Desactivar' : 'Activar'}</button>
+          <button class="btn ghost" style="padding:5px 8px;font-size:11px;color:var(--red);" onclick="eliminarAbogado(${a.id})">Eliminar</button>
+        </td>
       </tr>
     `).join('');
   }
@@ -148,7 +189,53 @@
     if (res.ok) cargarAbogados();
   }
 
+  async function eliminarAbogado(id) {
+    if (!confirm('¿Eliminar este abogado? Si tiene casos a su nombre, no se va a poder — reasignalos primero.')) return;
+    const res = await fetch(`/api/admin/abogados/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok) cargarAbogados();
+    else alert(data.error || 'No se pudo eliminar');
+  }
+
+  async function restablecerPassword(id) {
+    const nueva = prompt('Escribí la nueva contraseña para este abogado (mínimo 6 caracteres):');
+    if (!nueva) return;
+    const res = await fetch(`/api/admin/abogados/${id}/password`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: nueva }),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'No se pudo restablecer'); return; }
+    mostrarReveal('Nueva contraseña asignada', nueva);
+  }
+
+  function resetFormAbogado() {
+    document.getElementById('form-abogado').reset();
+    document.getElementById('ab-editando-id').value = '';
+    document.getElementById('ab-lbl-password').textContent = 'Contraseña inicial';
+    document.getElementById('ab-password').required = true;
+    document.getElementById('ab-submit-btn').textContent = 'Crear abogado';
+  }
+
+  function editarAbogado(a) {
+    document.getElementById('ab-editando-id').value = a.id;
+    document.getElementById('ab-nombre').value = a.nombre;
+    document.getElementById('ab-ci').value = a.ci;
+    document.getElementById('ab-email').value = a.email;
+    document.getElementById('ab-telefono').value = a.telefono || '';
+    document.getElementById('ab-rol').value = a.rol;
+    document.getElementById('ab-password').value = '';
+    document.getElementById('ab-password').required = false;
+    document.getElementById('ab-lbl-password').textContent = 'Nueva contraseña (dejar vacío para no cambiarla)';
+    document.getElementById('ab-submit-btn').textContent = 'Guardar cambios';
+    document.getElementById('form-abogado').classList.remove('hidden');
+    document.getElementById('reveal-abogado').classList.add('hidden');
+    document.getElementById('form-abogado').scrollIntoView({ behavior: 'smooth' });
+  }
+
   document.getElementById('btn-nuevo-abogado').addEventListener('click', () => {
+    resetFormAbogado();
     document.getElementById('form-abogado').classList.toggle('hidden');
   });
 
@@ -157,24 +244,48 @@
     const errorMsg = document.getElementById('error-abogado');
     errorMsg.style.display = 'none';
 
-    try {
-      const res = await fetch('/api/admin/abogados', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre: document.getElementById('ab-nombre').value.trim(),
-          ci: document.getElementById('ab-ci').value.trim(),
-          email: document.getElementById('ab-email').value.trim(),
-          telefono: document.getElementById('ab-telefono').value.trim(),
-          rol: document.getElementById('ab-rol').value,
-          password: document.getElementById('ab-password').value,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'No se pudo crear el abogado');
+    const editandoId = document.getElementById('ab-editando-id').value;
+    const password = document.getElementById('ab-password').value;
+    const datos = {
+      nombre: document.getElementById('ab-nombre').value.trim(),
+      ci: document.getElementById('ab-ci').value.trim(),
+      email: document.getElementById('ab-email').value.trim(),
+      telefono: document.getElementById('ab-telefono').value.trim(),
+      rol: document.getElementById('ab-rol').value,
+    };
 
-      document.getElementById('form-abogado').reset();
+    try {
+      if (editandoId) {
+        const res = await fetch(`/api/admin/abogados/${editandoId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(datos),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo guardar');
+
+        if (password) {
+          const resPw = await fetch(`/api/admin/abogados/${editandoId}/password`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password }),
+          });
+          if (resPw.ok) mostrarReveal('Nueva contraseña asignada', password);
+        }
+      } else {
+        datos.password = password;
+        const res = await fetch('/api/admin/abogados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(datos),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo crear el abogado');
+        mostrarReveal('Contraseña asignada', password);
+      }
+
       document.getElementById('form-abogado').classList.add('hidden');
+      resetFormAbogado();
       cargarAbogados();
     } catch (err) {
       errorMsg.textContent = err.message;
@@ -182,11 +293,11 @@
     }
   });
 
-  // ----- clientes -----
+  // ===================== CLIENTES =====================
   async function cargarClientesAdmin() {
     const res = await fetch('/api/admin/clientes');
     const tbody = document.getElementById('tabla-clientes-admin');
-    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="5">No se pudo cargar</td></tr>'; return; }
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="6">No se pudo cargar</td></tr>'; return; }
     const clientes = await res.json();
     document.getElementById('contador-clientes').textContent = `${clientes.length} clientes`;
 
@@ -194,11 +305,16 @@
       <tr>
         <td>${c.nombre_razon_social}</td>
         <td>${c.ci_nit || '— (sin completar)'}</td>
+        <td class="mono">${c.codigo_acceso}</td>
         <td>${c.num_casos}</td>
         <td><span class="tag ${c.plan === 'premium' ? 'plazo-ok' : 'mat'}">${c.plan}</span></td>
-        <td><button class="btn ghost" style="padding:5px 10px;font-size:11px;" onclick="cambiarPlan(${c.id}, '${c.plan === 'premium' ? 'normal' : 'premium'}')">
-          ${c.plan === 'premium' ? 'Bajar a normal' : 'Subir a premium'}
-        </button></td>
+        <td style="white-space:nowrap;">
+          <button class="btn ghost" style="padding:5px 8px;font-size:11px;" onclick='editarCliente(${JSON.stringify(c)})'>Editar</button>
+          <button class="btn ghost" style="padding:5px 8px;font-size:11px;" onclick="cambiarPlan(${c.id}, '${c.plan === 'premium' ? 'normal' : 'premium'}')">
+            ${c.plan === 'premium' ? 'Bajar a normal' : 'Subir a premium'}
+          </button>
+          <button class="btn ghost" style="padding:5px 8px;font-size:11px;color:var(--red);" onclick="eliminarCliente(${c.id})">Eliminar</button>
+        </td>
       </tr>
     `).join('');
   }
@@ -212,7 +328,53 @@
     if (res.ok) cargarClientesAdmin();
   }
 
-  // ----- reportes -----
+  async function eliminarCliente(id) {
+    if (!confirm('¿Eliminar este cliente? Sus casos NO se borran, solo quedan sin este cliente vinculado.')) return;
+    const res = await fetch(`/api/admin/clientes/${id}`, { method: 'DELETE' });
+    if (res.ok) cargarClientesAdmin();
+    else alert('No se pudo eliminar el cliente');
+  }
+
+  function editarCliente(c) {
+    document.getElementById('cl-editando-id').value = c.id;
+    document.getElementById('cl-nombre').value = c.nombre_razon_social;
+    document.getElementById('cl-ci').value = c.ci_nit || '';
+    document.getElementById('cl-telefono').value = c.telefono || '';
+    document.getElementById('cl-email').value = c.email || '';
+    document.getElementById('form-cliente').classList.remove('hidden');
+    document.getElementById('form-cliente').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  document.getElementById('form-cliente').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorMsg = document.getElementById('error-cliente');
+    errorMsg.style.display = 'none';
+    const id = document.getElementById('cl-editando-id').value;
+
+    try {
+      const res = await fetch(`/api/admin/clientes/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre_razon_social: document.getElementById('cl-nombre').value.trim(),
+          ci_nit: document.getElementById('cl-ci').value.trim(),
+          telefono: document.getElementById('cl-telefono').value.trim(),
+          email: document.getElementById('cl-email').value.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar');
+
+      document.getElementById('form-cliente').classList.add('hidden');
+      document.getElementById('form-cliente').reset();
+      cargarClientesAdmin();
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.style.display = 'block';
+    }
+  });
+
+  // ===================== REPORTES =====================
   async function cargarReportes() {
     const res = await fetch('/api/admin/reportes');
     if (!res.ok) return;

@@ -23,7 +23,7 @@
     </div>
 
     <div class="content">
-      <button class="btn ghost" style="margin-bottom:14px;" onclick="location.href='/dashboard.html'">← Volver al Dashboard</button>
+      <button class="btn ghost mt-8" id="btn-volver" onclick="location.href='/dashboard.html'">← Volver al Dashboard</button>
 
       <div class="page-head">
         <div><h1 id="titulo-caso">Cargando…</h1><p id="subtitulo-caso"></p></div>
@@ -148,6 +148,15 @@
     const { user } = await meRes.json();
     esStaff = user.tipoCuenta === 'staff';
 
+    const btnVolver = document.getElementById('btn-volver');
+    if (esStaff) {
+      btnVolver.textContent = '← Volver al Dashboard';
+      btnVolver.onclick = () => location.href = '/dashboard.html';
+    } else {
+      btnVolver.textContent = '← Volver a mis casos';
+      btnVolver.onclick = () => location.href = '/portal.html';
+    }
+
     const res = await fetch(`/api/casos/${casoId}`);
     if (!res.ok) {
       document.getElementById('titulo-caso').textContent = 'No se pudo cargar el caso';
@@ -230,9 +239,20 @@
           📄 <a href="/api/documentos/${d.id}/descargar" style="color:var(--navy);font-weight:600;">${d.nombre_archivo}</a>
           <span class="size">${d.peso_kb ? d.peso_kb + ' KB' : ''}</span>
         </div>
-        ${esStaff ? `<span class="mono" style="font-size:11px;color:${d.visible_en_portal ? 'var(--green)' : 'var(--muted)'}">${d.visible_en_portal ? 'visible al cliente' : 'solo estudio'}</span>` : ''}
+        ${esStaff ? `
+          <div class="flex-row" style="flex-shrink:0;">
+            <span class="mono text-xs" style="color:${d.visible_en_portal ? 'var(--green)' : 'var(--muted)'}">${d.visible_en_portal ? 'visible al cliente' : 'solo estudio'}</span>
+            <button class="btn ghost" style="padding:4px 8px;font-size:11px;color:var(--red);" onclick="eliminarDocumento(${d.id})">Eliminar</button>
+          </div>` : ''}
       </div>
     `).join('');
+  }
+
+  async function eliminarDocumento(id) {
+    if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
+    const res = await fetch(`/api/documentos/${id}`, { method: 'DELETE' });
+    if (res.ok) cargarDetalle();
+    else alert('No se pudo eliminar el documento');
   }
 
   // --- toggles de los formularios "+" ---

@@ -109,4 +109,25 @@ router.get('/:id/descargar', async (req, res) => {
   }
 });
 
+// DELETE /api/documentos/:id -> eliminar un documento (solo staff)
+router.delete('/:id', requireTipoCuenta('staff'), async (req, res) => {
+  try {
+    const doc = await pool.query('SELECT * FROM documento WHERE id = $1', [req.params.id]);
+    if (doc.rowCount === 0) return res.status(404).json({ error: 'Documento no encontrado' });
+    const documento = doc.rows[0];
+
+    await pool.query('DELETE FROM documento WHERE id = $1', [req.params.id]);
+
+    const rutaCompleta = path.join(UPLOAD_DIR, documento.ruta_archivo);
+    fs.unlink(rutaCompleta, (err) => {
+      if (err) console.error('No se pudo borrar el archivo físico:', err.message);
+    });
+
+    res.json({ eliminado: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al eliminar el documento' });
+  }
+});
+
 module.exports = router;
